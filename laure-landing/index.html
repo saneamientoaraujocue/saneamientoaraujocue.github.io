@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laure Resto Bar | Curuguaty</title>
+
+  <!-- Fuentes de Google Fonts: una para el logo/títulos y otra para el texto -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/landing.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="logo-texto">Laure</span>
+      <span class="logo-sub">Resto Bar</span>
+    </div>
+
+    <!-- Botón hamburguesa, solo se ve en celular -->
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav id="navMenu">
+      <ul>
+        <li><a href="#inicio">Inicio</a></li>
+        <li><a href="#nosotros">Nosotros</a></li>
+        <li><a href="menu.html">Menú</a></li>
+        <li><a href="#galeria">Galería</a></li>
+        <li><a href="#horarios">Horarios</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+      </ul>
+    </nav>
+  </header>
+
+
+  <main>
+
+    <!--INICIO / HERO -->
+    <section id="inicio" class="hero">
+      <div class="hero-overlay"></div>
+      <div class="hero-contenido">
+        <p class="hero-eyebrow">Curuguaty · Barrio Centro</p>
+        <h1>LAURE <span>RESTO BAR</span></h1>
+        <p class="hero-eslogan">"Buen ambiente, buena comida y mejores momentos"</p>
+        <div class="hero-botones">
+          <a href="#contacto" class="btn btn-primario">Cómo llegar</a>
+          <a href="#galeria" class="btn btn-secundario">Ver el lugar</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== NOSOTROS ===== -->
+    <section id="nosotros" class="container nosotros">
+      <div class="nosotros-texto">
+        <h2>Quiénes somos</h2>
+        <p>
+          En Laure Resto Bar ofrecemos a nuestros clientes una experiencia
+          gastronómica agradable, combinando alimentos de calidad con un
+          ambiente cómodo y social.
+        </p>
+        <p>
+          Nuestra visión es ser un restobar reconocido en la ciudad por su
+          buen servicio, ambiente y variedad gastronómica.
+        </p>
+      </div>
+
+      <div class="valores grid">
+        <article class="card">
+          <div class="icono">⭐</div>
+          <h3>Calidad</h3>
+          <p>Cuidamos cada detalle de lo que servimos.</p>
+        </article>
+
+        <article class="card">
+          <div class="icono">🤝</div>
+          <h3>Responsabilidad</h3>
+          <p>Cumplimos lo que prometemos, siempre.</p>
+        </article>
+
+        <article class="card">
+          <div class="icono">🙋</div>
+          <h3>Atención al cliente</h3>
+          <p>Buscamos que cada visita sea memorable.</p>
+        </article>
+
+        <article class="card">
+          <div class="icono">❤️</div>
+          <h3>Respeto</h3>
+          <p>Un trato cordial para todos, sin excepción.</p>
+        </article>
+
+        <article class="card">
+          <div class="icono">🎯</div>
+          <h3>Compromiso</h3>
+          <p>Con nuestros clientes y con nuestra ciudad.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===== GALERÍA ===== -->
+    <section id="galeria" class="galeria-section">
+      <div class="container">
+        <h2>Así se vive Laure</h2>
+        <p class="subtitulo">Un vistazo a nuestro ambiente</p>
+
+        <div class="galeria grid-galeria">
+          <img src="img/galeria-letrero.jpg" alt="Salón principal de Laure Resto Bar con letrero luminoso" class="foto-galeria">
+          <img src="img/galeria-salon.jpg" alt="Barra e interior de Laure Resto Bar" class="foto-galeria">
+          <img src="img/galeria-mesas.jpg" alt="Mesas decoradas en el salón de Laure Resto Bar" class="foto-galeria">
+          <img src="img/galeria-barra.jpg" alt="Barra de tragos de Laure Resto Bar" class="foto-galeria">
+        </div>
+      </div>
+    </section>
+
+    <!--HORARIOS Y UBICACIÓN-->
+    <section id="horarios" class="container horarios-section">
+      <h2>Horarios y ubicación</h2>
+
+      <div class="horarios-grid">
+        <div class="card card-horario">
+          <h3>🕒 Horario de atención</h3>
+          <ul class="lista-horarios">
+            <li><span>Lunes a Miércoles</span><span>18:00 - 00:00</span></li>
+            <li><span>Jueves a Sábado</span><span>18:00 - 00:00</span></li>
+            <li><span>Domingo</span><span>18:00 - 23:30</span></li>
+          </ul>
+        </div>
+
+        <div class="card card-horario">
+          <h3>📍 Dónde estamos</h3>
+          <p>Calle Julia M. Cueto casi Dr. Eusebio Ayala,<br>Barrio Centro - Curuguaty.</p>
+          <a href="https://maps.app.goo.gl/CiBU5FUQ31kyQZLq9" target="_blank" rel="noopener" class="btn btn-primario btn-chico">Ver en Google Maps</a>
+        </div>
+      </div>
+    </section>
+
+    <!--CONTACTO-->
+    <section id="contacto" class="contacto-section">
+      <div class="container">
+        <h2>Hacenos tu consulta</h2>
+        <p class="subtitulo">¿Tenés dudas o querés reservar? Escribinos.</p>
+
+        <div class="contacto-grid">
+
+          <form id="formContacto">
+            <div>
+              <label for="nombre">Nombre:</label>
+              <input
+                type="text"
+                name="nombre"
+                id="nombre"
+                placeholder="Tu nombre"
+                required
+              >
+            </div>
+
+            <div>
+              <label for="motivo">Motivo:</label>
+              <select name="motivo" id="motivo" required>
+                <option value="Reservar mesa">Reservar mesa</option>
+                <option value="Pedido para llevar">Pedido para llevar</option>
+                <option value="Consulta general">Consulta general</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="mensaje">Mensaje:</label>
+              <textarea
+                name="mensaje"
+                id="mensaje"
+                placeholder="Contanos los detalles (fecha, cantidad de personas, qué querés pedir, etc.)"
+                required
+              ></textarea>
+            </div>
+
+            <div class="contenedor-boton">
+              <input type="submit" value="Enviar por WhatsApp">
+              <input type="reset" value="Cancelar">
+            </div>
+
+            <p id="mensajeEnviado" class="mensaje-confirmacion"></p>
+          </form>
+
+          <div class="contacto-info">
+            <a href="tel:+595984033698" class="dato-contacto">
+              <span class="icono-contacto">📞</span> +595 984 033 698
+            </a>
+            <a href="mailto:Lizsuarez13@gmail.com" class="dato-contacto">
+              <span class="icono-contacto">✉️</span> Lizsuarez13@gmail.com
+            </a>
+            <a href="https://www.instagram.com/laurerestobar.py" target="_blank" rel="noopener" class="dato-contacto">
+              <span class="icono-contacto">📷</span> @laurerestobar.py
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>&copy; Laure Resto Bar 2026 · Curuguaty, Paraguay</p>
+  </footer>
+
+  <!-- Botón flotante para volver arriba -->
+  <button id="btnArriba" aria-label="Volver arriba">↑</button>
+
+  <!-- Lightbox para la galería -->
+  <div id="lightbox" class="lightbox">
+    <span id="cerrarLightbox" class="cerrar-lightbox">&times;</span>
+    <img id="imagenLightbox" src="" alt="">
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/index.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SD | Contacto</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/contacto.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <img class="logo" src="img/logo.png" alt="Logo">
+      <h1>Sup3rD3vs</h1>
+    </div>
+
+    <nav>
+      <ul>
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="productos.html">Productos</a></li>
+        <li><a href="contacto.html">Contacto</a></li>
+      </ul>
+    </nav>
+  </header>
+
+
+  <main class="container">
+    <h2>Activa la superseñal</h2>
+    <p>¿Tienes una misión para nosotros? Envíanos los detalles de tu proyecto.</p>
+
+    <form>
+
+      <div>
+        <label for="nombre">Nombre:</label>
+        <input 
+        type="text" 
+        name="nombre" 
+        id="nombre" 
+        placeholder="Tu identidad secreta" required
+        >
+      </div>
+        
+      
+      <div>
+          <label for="email">Email</label>
+          <input
+           type="email"
+          name="email"
+          placeholder="ejemplo@superdevs.com"required
+          >
+        </div>
+       
+       
+        <div>
+          <label for="mensaje">Mensaje:</label>
+          <textarea 
+          name="Mensaje" 
+          id="Mensaje"
+          placeholder="Cuentanos los detalles de la mision   "
+          ></textarea>
+        </div>
+        
+        
+        <div class="contenedor-boton">
+          <input type="submit"value="Enviar mensaje">
+          <input type="reset"value="Cancelar">
+          
+        </div>
+      <!-- Agregar correo , mensaje y botones -->
+
+    </form>
+
+  </main>
+
+  <footer>
+    <p> &copy; Sup3rD3vs 2026</p>
+  </footer>
+
+</body>
+
+</html>

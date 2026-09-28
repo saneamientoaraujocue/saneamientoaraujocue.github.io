@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laure Resto Bar | Menú</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/menu.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="logo-texto">Laure</span>
+      <span class="logo-sub">Resto Bar</span>
+    </div>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav id="navMenu">
+      <ul>
+        <li><a href="index.html#inicio">Inicio</a></li>
+        <li><a href="index.html#nosotros">Nosotros</a></li>
+        <li><a href="menu.html">Menú</a></li>
+        <li><a href="index.html#galeria">Galería</a></li>
+        <li><a href="index.html#horarios">Horarios</a></li>
+        <li><a href="index.html#contacto">Contacto</a></li>
+      </ul>
+    </nav>
+  </header>
+
+
+  <main>
+    <!-- ===== MENÚ ===== -->
+    <section id="menu" class="menu-section">
+      <div class="container">
+        <h2>Nuestro menú</h2>
+        <p class="subtitulo">Elegí una categoría</p>
+
+        <!-- Pestañas para filtrar categorías -->
+        <div class="menu-tabs">
+          <button class="tab-btn activo" data-cat="sandwiches">Sandwiches</button>
+          <button class="tab-btn" data-cat="hamburguesas">Hamburguesas</button>
+          <button class="tab-btn" data-cat="emplatados">Emplatados</button>
+          <button class="tab-btn" data-cat="picadas">Picadas</button>
+          <button class="tab-btn" data-cat="pizzas">Pizzas</button>
+          <button class="tab-btn" data-cat="bocados">Bocados</button>
+        </div>
+
+        <!-- SANDWICHES -->
+        <div class="menu-categoria" id="cat-sandwiches">
+          <div class="menu-grid">
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Laure</h3>
+                <span class="precio">40.000Gs</span>
+              </div>
+              <p>Pan artesanal, tiras de lomito, queso parmesano, tomate seco, rúcula, salsa verde especial de la casa, papas fritas.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Al bacon</h3>
+                <span class="precio">35.000Gs</span>
+              </div>
+              <p>Pan artesanal, doble carne de lomito, salsa cheddar de la casa, tocino, mayo, lechuga, tomate.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Clásico</h3>
+                <span class="precio">30.000Gs</span>
+              </div>
+              <p>Pan artesanal, carne de lomito, huevo, queso mozzarella, lechuga, tomate, salsa rosa.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>El Charrúa</h3>
+                <span class="precio">25.000Gs</span>
+              </div>
+              <p>Pan de molde integral tostado, tiras de pollo, queso light, tomate seco, rúcula, aceitunas.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- HAMBURGUESAS -->
+        <div class="menu-categoria oculto" id="cat-hamburguesas">
+          <p class="menu-nota">Todas nuestras hamburguesas son elaboradas con corte seleccionado.</p>
+          <div class="menu-grid">
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Junior</h3>
+                <span class="precio">20.000Gs</span>
+              </div>
+              <p>Carne vacuna 130 gr., queso cheddar, kétchup, papas.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Al bacón</h3>
+                <span class="precio">28.000Gs</span>
+              </div>
+              <p>Tomate, carne vacuna 130gr., doble cheddar, bacon caramelizado.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Pionera</h3>
+                <span class="precio">25.000Gs</span>
+              </div>
+              <p><strong>A pedido de muchos, la auténtica.</strong> Lechuga, tomate, carne vacuna, huevo, queso mozzarella, arveja, choclo, aceitunas, mayo, kétchup, mostaza.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Gourmet</h3>
+                <span class="precio">33.000Gs</span>
+              </div>
+              <p>Doble carne de 130gr, alioli, doble queso cheddar, bacon, papas fritas.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Clásica</h3>
+                <span class="precio">30.000Gs</span>
+              </div>
+              <p>130gr. de carne vacuna, tomate, queso cheddar, cebolla morada, pepinillos, papas.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPLATADOS -->
+        <div class="menu-categoria oculto" id="cat-emplatados">
+          <div class="menu-grid">
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Bife de chorizo (churrasco)</h3>
+                <span class="precio">75.000Gs</span>
+              </div>
+              <p>Bife de chorizo acompañado de salsa demi-glace con toque de ajo, pan tostado, papas fritas. (Guarnición a elección).</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Milanesa a la napolitana</h3>
+                <span class="precio">60.000Gs</span>
+              </div>
+              <p>Carne de lomito empanado, salsa pomodoro, mozzarella gratinado, acompañado de papas fritas.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Milanesa a caballo</h3>
+                <span class="precio">50.000Gs</span>
+              </div>
+              <p>Carne de lomito empanado, huevo frito. (Guarnición a elección).</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Pollo grille</h3>
+                <span class="precio">60.000Gs</span>
+              </div>
+              <p>Pollo grillé, acompañado de vegetales salteados (zanahoria, brócoli, papas).</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Ensalada césar</h3>
+                <span class="precio">40.000Gs</span>
+              </div>
+              <p>Lechuga, tiras de pollo grillado, queso parmesano, picatostes, salsa césar.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Rapidita ardiente</h3>
+                <span class="precio">35.000Gs</span>
+              </div>
+              <p>Tiras de pollo, tiras de lomito, queso cheddar, repollo y salsa especial picante.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Rapidita light</h3>
+                <span class="precio">30.000Gs</span>
+              </div>
+              <p>Tiras de pollo, salteado de verduras, queso mozzarella, salsa griega.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PICADAS -->
+        <div class="menu-categoria oculto" id="cat-picadas">
+          <div class="menu-grid">
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Picada especial de la casa</h3>
+                <span class="precio">150.000Gs</span>
+              </div>
+              <p>Tiras de picaña gratinada con queso mozzarella, pan de ajo, chorizo viena con y sin picante, salsa pesto y farofa (parrilla).</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Picada familiar</h3>
+                <span class="precio">165.000Gs</span>
+              </div>
+              <p>Milanesita de carne, milanesita de pollo, chorizo viena picante y sin picante, papas fritas, croquetas de mozzarella.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Picada compinche</h3>
+                <span class="precio">85.000Gs</span>
+              </div>
+              <p>Milanesita de carne, milanesita de pollo, chorizo de viena picante y sin picante, papas fritas, croquetas de mozzarella.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Paraguayoite</h3>
+                <span class="precio">130.000Gs</span>
+              </div>
+              <p>Tiras de tapa cuadril, sopa paraguaya, chorizo de viena, mandioca frita (parrillita).</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Picaña al ajo o con verduras</h3>
+                <span class="precio">95.000Gs</span>
+              </div>
+              <p>Tiras de tapa cuadril, acompañado de papas y farofa.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Tilapia</h3>
+                <span class="precio">80.000Gs</span>
+              </div>
+              <p>Tiras de tilapia empanadas en pan o de la casa y fritas, salsa teriyaki.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Milanesita de carne</h3>
+                <span class="precio">70.000Gs</span>
+              </div>
+              <p>Carnes de lomito empanadas y fritas.</p>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Milanesita de pollo</h3>
+                <span class="precio">60.000Gs</span>
+              </div>
+              <p>Carne de pollo empanados y fritos.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PIZZAS -->
+        <div class="menu-categoria oculto" id="cat-pizzas">
+
+          <div class="pizza-precios">
+            <div class="tabla-precios">
+              <h3>Con borde catupiry</h3>
+              <ul>
+                <li><span>Personal</span><span>35.000Gs</span></li>
+                <li><span>Mediana</span><span>55.000Gs</span></li>
+                <li><span>Familiar</span><span>105.000Gs</span></li>
+              </ul>
+            </div>
+            <div class="tabla-precios">
+              <h3>Sin bordes</h3>
+              <ul>
+                <li><span>Personal</span><span>30.000Gs</span></li>
+                <li><span>Mediana</span><span>50.000Gs</span></li>
+                <li><span>Familiar</span><span>95.000Gs</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <h3 class="titulo-sabores">Sabores de pizza</h3>
+          <div class="menu-grid menu-grid-sabores">
+            <div class="menu-item">
+              <h3>De la casa</h3>
+              <p>Queso mozzarella, pepperoni, palmito, aceituna negra, queso catupiry, champiñón.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Rúcula</h3>
+              <p>Puré de tomate, queso mozzarella, hojas frescas de rúcula humedecidas en salsa, tomates en rodajas.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Italiana</h3>
+              <p>Bastante puré de tomate, queso mozzarella, pepperoni, aceitunas y albahaca seca.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Strogonoff</h3>
+              <p>Strogonoff de carne, queso mozzarella y cebollita en hoja.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Cuatro queso</h3>
+              <p>Queso mozzarella, queso sardo, queso parmesano y requesón.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Choclo</h3>
+              <p>Queso muzza, choclo.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Portuguesa</h3>
+              <p>Queso mozzarella, jamón, cebolla morada, huevo duro, tomate y aceitunas.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Mexicana</h3>
+              <p>Queso mozzarella, tiras de carne, chorizo picante, jalapeños y aceite de oliva.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Pesto</h3>
+              <p>Queso mozzarella, salsa de pesto y tomate cherry.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Palmito</h3>
+              <p>Queso mozzarella, palmito, aceitunas y salsa golf.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Calabresa</h3>
+              <p>Queso mozzarella, tomate en rodajas y calabresa.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Calabresa con cebolla</h3>
+              <p>Queso mozzarella, cebolla en julianas.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Napolitana</h3>
+              <p>Queso mozzarella, tomate en rodajas, morrones y aceitunas.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Bacon</h3>
+              <p>Queso mozzarella, bacon y morrones.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Pepperoni</h3>
+              <p>Queso mozzarella y pepperoni.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Catupiry</h3>
+              <p>Queso mozzarella, pollo y requesón.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Muzzarella</h3>
+              <p>Queso mozzarella y jamón.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Hawaiana</h3>
+              <p>Queso mozzarella, salsa de tomates, piña, jamón cocido.</p>
+            </div>
+            <div class="menu-item">
+              <h3>Margarita</h3>
+              <p>Bastante puré de tomates, queso mozzarella, hojas de albahaca fresca, tomate seco.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOCADOS -->
+        <div class="menu-categoria oculto" id="cat-bocados">
+          <div class="menu-grid">
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Papas fritas tradicionales</h3>
+                <span class="precio">30.000Gs</span>
+              </div>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Papas al bacon con queso cheddar o catupiry</h3>
+                <span class="precio">40.000Gs</span>
+              </div>
+            </div>
+            <div class="menu-item">
+              <div class="menu-item-linea">
+                <h3>Bastón</h3>
+                <span class="precio">15.000Gs c/u</span>
+              </div>
+              <p>Requesón con pollo, requesón con jamón o requesón con calabresa.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+  </main>
+
+  <footer>
+    <p>&copy; Laure Resto Bar 2026 · Curuguaty, Paraguay</p>
+  </footer>
+
+  <button id="btnArriba" aria-label="Volver arriba">↑</button>
+
+  <script src="js/main.js"></script>
+  <script src="js/menu.js"></script>
+</body>
+
+</html>

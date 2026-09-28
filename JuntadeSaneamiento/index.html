@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Junta de Saneamiento Santa Rosa Mi II - Sistema de Gestión</title>
+    <!-- Tailwind CSS desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos de Impresión para la Factura Exacta */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #factura-imprimible, #factura-imprimible * {
+                visibility: visible;
+            }
+            #factura-imprimible {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 10px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .border-factura {
+            border: 1.5px solid #1e293b;
+        }
+
+        .sello-pagado {
+            border: 3px double #16a34a;
+            color: #16a34a;
+            transform: rotate(-5deg);
+        }
+
+        .sello-pendiente {
+            border: 3px double #dc2626;
+            color: #dc2626;
+            transform: rotate(-5deg);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between font-sans">
+
+    <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
+    <header class="bg-blue-900 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white text-blue-900 p-2 rounded-full font-bold text-xl">JS</div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Junta de Saneamiento Santa Rosa Mi II</h1>
+                    <p class="text-xs text-blue-200">Calle San Antonio - Curuguaty, Canindeyú</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+                <div id="status-admin-badge" class="hidden bg-green-600 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span> Admin Conectado
+                </div>
+                <button id="btn-login-toggle" onclick="abrirModalLogin()" class="bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded transition">
+                    Acceso Administrador
+                </button>
+                <button id="btn-logout" onclick="cerrarSesionAdmin()" class="hidden bg-red-600 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded transition">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- PESTAÑAS DE NAVEGACIÓN (SEPARACIÓN PÚBLICO / ADMIN) -->
+    <div class="bg-white border-b border-slate-200 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 flex space-x-2 overflow-x-auto">
+            <!-- Pestaña Pública (Visible para todos) -->
+            <button onclick="cambiarPestana('cliente')" id="tab-cliente" class="px-4 py-3 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 flex items-center gap-2">
+                🔍 Consulta de Facturas (Clientes)
+            </button>
+
+            <!-- Pestañas Privadas (Solo Administrador) -->
+            <button onclick="cambiarPestana('lecturas')" id="tab-lecturas" class="tab-admin hidden px-4 py-3 text-sm font-semibold text-slate-600 border-b-2 border-transparent hover:text-blue-600 flex items-center gap-2">
+                💧 Lecturas y Facturación
+            </button>
+            <button onclick="cambiarPestana('usuarios')" id="tab-usuarios" class="tab-admin hidden px-4 py-3 text-sm font-semibold text-slate-600 border-b-2 border-transparent hover:text-blue-600 flex items-center gap-2">
+                👥 Padrón de Usuarios
+            </button>
+            <button onclick="cambiarPestana('gastos')" id="tab-gastos" class="tab-admin hidden px-4 py-3 text-sm font-semibold text-slate-600 border-b-2 border-transparent hover:text-blue-600 flex items-center gap-2">
+                💸 Registro de Gastos
+            </button>
+            <button onclick="cambiarPestana('reportes')" id="tab-reportes" class="tab-admin hidden px-4 py-3 text-sm font-semibold text-slate-600 border-b-2 border-transparent hover:text-blue-600 flex items-center gap-2">
+                📊 Reportes y Balances
+            </button>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+
+        <!-- 1. VISTA CLIENTE: CONSULTA PÚBLICA -->
+        <section id="view-cliente" class="space-y-6">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 max-w-2xl mx-auto text-center">
+                <h2 class="text-xl font-bold text-slate-800 mb-2">Consulta de Factura de Agua</h2>
+                <p class="text-slate-600 text-sm mb-4">Ingresa tu número de Cédula (C.I.N°), número de Medidor o número de Factura.</p>
+                <div class="flex gap-2">
+                    <input type="text" id="input-busqueda-cliente" placeholder="Ej: 14002162 o 1234567" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <button onclick="buscarFacturaCliente()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition">
+                        Buscar
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESULTADO DE LA BÚSQUEDA DEL CLIENTE -->
+            <div id="resultado-busqueda-cliente" class="hidden max-w-xl mx-auto">
+                <div id="contenedor-boleta-cliente"></div>
+            </div>
+        </section>
+
+        <!-- 2. VISTA ADMIN: LECTURAS Y FACTURACIÓN -->
+        <section id="view-lecturas" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Formulario de carga de lecturas -->
+                <div class="lg:col-span-5 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 pb-2 border-b">Cargar Lectura y Generar Factura</h3>
+                    <form id="form-lectura" onsubmit="guardarFactura(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Seleccionar Usuario</label>
+                            <select id="select-usuario" onchange="cargarDatosUsuarioSeleccionado()" required class="w-full p-2 border rounded bg-slate-50 text-sm">
+                                <option value="">-- Seleccionar --</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ciclo / Período</label>
+                                <input type="text" id="form-ciclo" value="7/26 - Julio" required class="w-full p-2 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Plazo de Pago (Días)</label>
+                                <input type="number" id="form-dias-plazo" value="13" onchange="actualizarVencimientoAuto()" required class="w-full p-2 border rounded text-sm">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión</label>
+                                <input type="date" id="form-emision" onchange="actualizarVencimientoAuto()" required class="w-full p-2 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Vencimiento</label>
+                                <input type="date" id="form-vencimiento" required class="w-full p-2 border rounded text-sm bg-slate-100" readonly>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Lectura Anterior</label>
+                                <input type="number" id="form-lectura-anterior" oninput="calcularConsumo()" required class="w-full p-2 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Lectura Actual</label>
+                                <input type="number" id="form-lectura-actual" oninput="calcularConsumo()" required class="w-full p-2 border rounded text-sm">
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 p-3 rounded border border-blue-200">
+                            <div class="flex justify-between text-xs text-blue-900 mb-1">
+                                <span>Consumo Calculado:</span>
+                                <span id="lbl-consumo-litros" class="font-bold">0 L</span>
+                            </div>
+                            <div class="flex justify-between text-sm text-blue-900 font-bold">
+                                <span>Monto Agua:</span>
+                                <span id="lbl-monto-agua">0 Gs.</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Otros Conceptos / Deuda Anterior (Gs.)</label>
+                            <input type="number" id="form-otros" value="0" oninput="calcularConsumo()" class="w-full p-2 border rounded text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Estado de Pago</label>
+                            <select id="form-estado-pago" class="w-full p-2 border rounded text-sm font-semibold">
+                                <option value="PENDIENTE" class="text-red-600">PENDIENTE</option>
+                                <option value="PAGADO" class="text-green-600">PAGADO</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded transition">
+                            Guardar y Emitir Factura
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Previsualización de la Boleta Físicamente Exacta -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="flex justify-between items-center no-print">
+                        <h3 class="text-lg font-bold text-slate-800">Vista Previa del Comprobante</h3>
+                        <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-1">
+                            🖨️ Imprimir Factura
+                        </button>
+                    </div>
+
+                    <div id="factura-imprimible" class="bg-white p-6 border-factura rounded shadow-sm text-xs space-y-3 font-sans text-slate-900">
+                        <!-- ENCABEZADO BOLETA -->
+                        <div class="flex justify-between items-start border-b pb-2">
+                            <div>
+                                <h2 class="font-bold text-sm uppercase">Junta de Saneamiento Santa Rosa Mi II. Calle San Antonio</h2>
+                                <p>Nombres del usuario: <span id="doc-nombre" class="font-bold">--------------------</span></p>
+                                <p>C.I.N°: <span id="doc-ci">--------</span></p>
+                                <p>Dirección: <span id="doc-direccion">Calle San Antonio</span></p>
+                                <p>Medidor N°: <span id="doc-medidor" class="font-bold">--------</span></p>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-sm">N° <span id="doc-num-factura">684</span></span>
+                            </div>
+                        </div>
+
+                        <!-- PERÍODO -->
+                        <div class="border rounded p-1.5 text-center bg-slate-50 font-semibold grid grid-cols-3 gap-1">
+                            <div>Ciclo: <span id="doc-ciclo">7/26</span></div>
+                            <div>Emisión: <span id="doc-emision">10/08/26</span></div>
+                            <div>Vencimiento: <span id="doc-vencimiento">23/08/26</span></div>
+                        </div>
+
+                        <!-- TABLA INFORMACIÓN DE CONSUMO -->
+                        <table class="w-full border-collapse border border-slate-300 text-center">
+                            <thead>
+                                <tr class="bg-slate-100 font-bold">
+                                    <th class="border border-slate-300 p-1">Lectura actual</th>
+                                    <th class="border border-slate-300 p-1">Lectura anterior</th>
+                                    <th class="border border-slate-300 p-1">Consumo</th>
+                                    <th class="border border-slate-300 p-1">Consumo mínimo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="doc-lectura-actual" class="border border-slate-300 p-1">0</td>
+                                    <td id="doc-lectura-anterior" class="border border-slate-300 p-1">0</td>
+                                    <td id="doc-consumo-litros" class="border border-slate-300 p-1 font-bold">0 L</td>
+                                    <td class="border border-slate-300 p-1">15.000 L</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- LEYENDA TARIFARIO DE AGUA -->
+                        <div class="text-[10px] space-y-0.5 text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
+                            <p class="font-bold">Información importante sobre el pago:</p>
+                            <p>* Cada usuario abonará veinte mil gs. hasta 15 mil litros de agua utilizadas, eso corresponde al pago mínimo.</p>
+                            <p>* Desde 15.001 hasta 25.000 litros se abonará 2 gs. más por cada litro de agua utilizada.</p>
+                            <p>* Desde 25.001 en adelante se abonará la suma de 3 gs. más por cada litro de agua utilizada.</p>
+                            <p class="italic text-[9px] mt-1">El uso racional del agua ayuda a garantizar la disponibilidad para futura generación, cuidémosla, juntos podemos!!!</p>
+                        </div>
+
+                        <!-- MONTOS CONCEPTOS -->
+                        <table class="w-full border-collapse border border-slate-300">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="border border-slate-300 p-1 text-left">CONCEPTO:</th>
+                                    <th class="border border-slate-300 p-1 text-right w-32">Valor a pagar/Gs.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border border-slate-300 p-1">-Consumo de agua potable.</td>
+                                    <td id="doc-monto-agua" class="border border-slate-300 p-1 text-right">0</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-slate-300 p-1">Otros: (Deuda / Recargos)</td>
+                                    <td id="doc-monto-otros" class="border border-slate-300 p-1 text-right">0</td>
+                                </tr>
+                                <tr class="font-bold text-sm bg-slate-50">
+                                    <td class="border border-slate-300 p-1">Total a pagar:</td>
+                                    <td id="doc-monto-total" class="border border-slate-300 p-1 text-right">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- PIE DE FACTURA CON SELLO / ESTADO DE PAGO -->
+                        <div class="pt-4 flex justify-between items-end">
+                            <div class="text-center">
+                                <div class="w-24 h-24 rounded-full border-2 border-purple-800 text-purple-900 flex flex-col items-center justify-center p-1 text-[8px] font-bold leading-tight mx-auto uppercase">
+                                    <span>JUNTA DE SANEAMIENTO</span>
+                                    <span class="text-[9px]">SANTA ROSA MI II</span>
+                                    <span class="text-[7px]">CURUGUATY - CANINDEYÚ</span>
+                                </div>
+                            </div>
+                            <div class="text-center min-w-[140px]">
+                                <div id="doc-sello-estado" class="sello-pendiente font-bold px-3 py-1 text-sm rounded mb-1 uppercase tracking-wider">
+                                    PENDIENTE
+                                </div>
+                                <p id="doc-fecha-sello" class="text-[10px] font-semibold">----</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. VISTA ADMIN: PADRÓN DE USUARIOS -->
+        <section id="view-usuarios" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Padrón de Contribuyentes</h3>
+                <button onclick="abrirModalNuevoUsuario()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded transition">
+                    + Registrar Nuevo Usuario
+                </button>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-xs">
+                        <tr>
+                            <th class="p-3">Medidor N°</th>
+                            <th class="p-3">C.I.N°</th>
+                            <th class="p-3">Nombre Completo</th>
+                            <th class="p-3">Dirección</th>
+                            <th class="p-3">Última Lectura</th>
+                            <th class="p-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-usuarios-body" class="divide-y divide-slate-200">
+                        <!-- Carga dinámica vía JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 4. VISTA ADMIN: REGISTRO DE GASTOS -->
+        <section id="view-gastos" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Form Cargar Gasto -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                    <h3 class="text-md font-bold text-slate-800 mb-4 pb-2 border-b">Cargar Nuevo Gasto</h3>
+                    <form id="form-gasto" onsubmit="guardarGasto(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Categoría</label>
+                            <select id="gasto-categoria" required class="w-full p-2 border rounded text-sm">
+                                <option value="Energía Eléctrica (ANDE)">Energía Eléctrica (ANDE)</option>
+                                <option value="Mantenimiento Tuberías/Red">Mantenimiento Tuberías/Red</option>
+                                <option value="Insumos (Cloro/Químicos)">Insumos (Cloro/Químicos)</option>
+                                <option value="Sueldos / Honorarios">Sueldos / Honorarios</option>
+                                <option value="Combustibles / Transporte">Combustibles / Transporte</option>
+                                <option value="Otros Gastos">Otros Gastos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Monto (Gs.)</label>
+                            <input type="number" id="gasto-monto" min="1" required class="w-full p-2 border rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha</label>
+                            <input type="date" id="gasto-fecha" required class="w-full p-2 border rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Descripción / Concepto</label>
+                            <textarea id="gasto-descripcion" rows="2" placeholder="Detalles del gasto..." class="w-full p-2 border rounded text-sm"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded transition">
+                            Registrar Gasto
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Tabla de Gastos -->
+                <div class="md:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-md font-bold text-slate-800">Historial de Egresos</h3>
+                        <span class="text-sm font-bold text-red-600">Total Gastos: <span id="lbl-total-gastos">0 Gs.</span></span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 font-bold uppercase">
+                                <tr>
+                                    <th class="p-2">Fecha</th>
+                                    <th class="p-2">Categoría</th>
+                                    <th class="p-2">Descripción</th>
+                                    <th class="p-2 text-right">Monto (Gs.)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-gastos-body" class="divide-y divide-slate-200">
+                                <!-- JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. VISTA ADMIN: REPORTES Y BALANCES -->
+        <section id="view-reportes" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Balance Financiero Real</h3>
+                    <p class="text-xs text-slate-500">Resumen de ingresos por cobro de agua vs. egresos de la Junta.</p>
+                </div>
+            </div>
+
+            <!-- MÉTRICAS CLAVE -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-5 rounded-lg border-l-4 border-green-500 shadow-sm border">
+                    <p class="text-xs font-bold text-slate-500 uppercase">Total Recaudado (Ingresos)</p>
+                    <h4 id="rep-total-ingresos" class="text-2xl font-bold text-green-600 mt-1">0 Gs.</h4>
+                    <p class="text-[11px] text-slate-400 mt-1">Suma de facturas cobradas</p>
+                </div>
+                <div class="bg-white p-5 rounded-lg border-l-4 border-red-500 shadow-sm border">
+                    <p class="text-xs font-bold text-slate-500 uppercase">Total Gastos (Egresos)</p>
+                    <h4 id="rep-total-egresos" class="text-2xl font-bold text-red-600 mt-1">0 Gs.</h4>
+                    <p class="text-[11px] text-slate-400 mt-1">Mantenimiento, ANDE, insumos</p>
+                </div>
+                <div class="bg-white p-5 rounded-lg border-l-4 border-blue-500 shadow-sm border">
+                    <p class="text-xs font-bold text-slate-500 uppercase">Balance Neto (Ganancia/Déficit)</p>
+                    <h4 id="rep-balance-neto" class="text-2xl font-bold text-blue-900 mt-1">0 Gs.</h4>
+                    <p class="text-[11px] text-slate-400 mt-1">Diferencia neta disponible</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-800 text-slate-400 text-xs py-4 text-center no-print">
+        <p>© 2026 Junta de Saneamiento Santa Rosa Mi II - Curuguaty, Paraguay</p>
+    </footer>
+
+    <!-- MODAL DE VISUALIZACIÓN DE COMPROBANTE PARA EL CLIENTE -->
+    <div id="modal-comprobante-cliente" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2 no-print">
+                <h3 class="text-base font-bold text-slate-800">Comprobante de Pago / Factura</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center gap-1">
+                        🖨️ Imprimir
+                    </button>
+                    <button onclick="cerrarModalComprobante()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-1.5 rounded">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+
+            <div id="contenido-comprobante-modal" class="bg-white p-4 border-factura rounded text-xs space-y-3 font-sans text-slate-900">
+                <!-- Se llena dinámicamente vía JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL INICIO DE SESIÓN ADMIN -->
+    <div id="modal-login" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-slate-800">Acceso Administrador</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Usuario</label>
+                    <input type="text" id="login-user" placeholder="admin" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Contraseña</label>
+                    <input type="password" id="login-pass" placeholder="••••••••" class="w-full p-2 border rounded text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="cerrarModalLogin()" class="px-4 py-2 text-slate-600 text-xs font-semibold">Cancelar</button>
+                <button onclick="autenticarAdmin()" class="px-4 py-2 bg-blue-600 text-white rounded text-xs font-semibold">Ingresar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO USUARIO -->
+    <div id="modal-usuario" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-slate-800">Registrar Nuevo Usuario</h3>
+            <form id="form-nuevo-usuario" onsubmit="guardarNuevoUsuario(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nombre Completo</label>
+                    <input type="text" id="nu-nombre" required class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">C.I.N°</label>
+                    <input type="text" id="nu-ci" required class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Dirección</label>
+                    <input type="text" id="nu-direccion" value="Calle San Antonio" required class="w-full p-2 border rounded text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">N° Medidor</label>
+                        <input type="text" id="nu-medidor" required class="w-full p-2 border rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Lectura Inicial</label>
+                        <input type="number" id="nu-lectura" value="0" required class="w-full p-2 border rounded text-sm">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" onclick="cerrarModalNuevoUsuario()" class="px-4 py-2 text-slate-600 text-xs font-semibold">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded text-xs font-semibold">Guardar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LÓGICA CONECTADA A RENDER & SUPABASE -->
+    <script>
+        const API_URL = "https://saneamientoaraujocue-github-io.onrender.com/api";
+
+        let esAdmin = false;
+        let usuarios = [];
+        let facturas = [];
+        let gastos = [];
+
+        window.onload = function() {
+            document.getElementById('form-emision').value = new Date().toISOString().split('T')[0];
+            document.getElementById('gasto-fecha').value = new Date().toISOString().split('T')[0];
+            actualizarVencimientoAuto();
+            cargarUsuariosDesdeBD();
+            cargarGastosDesdeBD();
+        };
+
+        // 1. CARGA DE DATOS EN VIVO
+        async function cargarUsuariosDesdeBD() {
+            try {
+                const res = await fetch(`${API_URL}/usuarios`);
+                if (res.ok) {
+                    usuarios = await res.json();
+                    renderUsuarios();
+                    renderSelectUsuarios();
+                }
+            } catch (error) {
+                console.error("Error al conectar con la API de usuarios:", error);
+            }
+        }
+
+        async function cargarGastosDesdeBD() {
+            try {
+                const res = await fetch(`${API_URL}/gastos`);
+                if (res.ok) {
+                    gastos = await res.json();
+                    renderGastos();
+                    generarReporte();
+                }
+            } catch (error) {
+                console.error("Error al conectar con la API de gastos:", error);
+            }
+        }
+
+        // 2. AUTENTICACIÓN ADMIN
+        async function autenticarAdmin() {
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+
+            try {
+                const res = await fetch(`${API_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario: user, password: pass })
+                });
+
+                if (res.ok) {
+                    esAdmin = true;
+                    cerrarModalLogin();
+                    document.querySelectorAll('.tab-admin').forEach(el => el.classList.remove('hidden'));
+                    document.getElementById('btn-login-toggle').classList.add('hidden');
+                    document.getElementById('btn-logout').classList.remove('hidden');
+                    document.getElementById('status-admin-badge').classList.remove('hidden');
+                    cambiarPestana('lecturas');
+                } else {
+                    alert('Usuario o contraseña incorrectos.');
+                }
+            } catch (error) {
+                alert('Error de conexión con el servidor.');
+            }
+        }
+
+        function cerrarSesionAdmin() {
+            esAdmin = false;
+            document.querySelectorAll('.tab-admin').forEach(el => el.classList.add('hidden'));
+            document.getElementById('btn-login-toggle').classList.remove('hidden');
+            document.getElementById('btn-logout').classList.add('hidden');
+            document.getElementById('status-admin-badge').classList.add('hidden');
+            cambiarPestana('cliente');
+        }
+
+        // 3. BÚSQUEDA PÚBLICA PAGO / CLIENTE 24/7
+        async function buscarFacturaCliente() {
+            const queryRaw = document.getElementById('input-busqueda-cliente').value;
+            const query = queryRaw.replace(/[\s-]/g, '').toLowerCase();
+
+            if (!query) return;
+
+            const contenedor = document.getElementById('resultado-busqueda-cliente');
+            contenedor.classList.remove('hidden');
+            contenedor.innerHTML = `<p class="text-center text-sm text-slate-500">Buscando en la base de datos...</p>`;
+
+            try {
+                const res = await fetch(`${API_URL}/facturas/buscar?q=${encodeURIComponent(query)}`);
+                if (res.ok) {
+                    const f = await res.json();
+                    contenedor.innerHTML = `
+                        <div class="bg-white p-5 rounded-lg border shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div class="space-y-1 text-center sm:text-left">
+                                <div class="flex items-center gap-2 justify-center sm:justify-start">
+                                    <span class="font-bold text-slate-800">Factura N° ${f.num_factura || f.numFactura}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.estado === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${f.estado}</span>
+                                </div>
+                                <p class="text-xs text-slate-600"><strong>Usuario:</strong> ${f.nombre}</p>
+                                <p class="text-xs text-slate-600"><strong>Medidor:</strong> ${f.medidor}</p>
+                                <p class="text-sm font-bold text-blue-900">Total a pagar: ${parseInt(f.monto_total || f.montoTotal).toLocaleString()} Gs.</p>
+                            </div>
+                            <button onclick='visualizarComprobanteModal(${JSON.stringify(f)})' class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded shadow transition flex items-center gap-1.5 shrink-0">
+                                👁️ Visualizar Comprobante
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    contenedor.innerHTML = `
+                        <div class="bg-red-50 text-red-700 p-4 rounded-lg text-center text-sm">
+                            No se encontró ninguna factura asociada a "${queryRaw}".
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                contenedor.innerHTML = `
+                    <div class="bg-red-50 text-red-700 p-4 rounded-lg text-center text-sm">
+                        Error al conectar con el servidor. Intente más tarde.
+                    </div>
+                `;
+            }
+        }
+
+        function visualizarComprobanteModal(f) {
+            const modalContenido = document.getElementById('contenido-comprobante-modal');
+            modalContenido.innerHTML = `
+                <div class="flex justify-between items-start border-b pb-2">
+                    <div>
+                        <h2 class="font-bold text-sm uppercase">Junta de Saneamiento Santa Rosa Mi II. Calle San Antonio</h2>
+                        <p>Nombres del usuario: <strong>${f.nombre}</strong></p>
+                        <p>C.I.N°: <strong>${f.ci}</strong></p>
+                        <p>Dirección: ${f.direccion}</p>
+                        <p>Medidor N°: <strong>${f.medidor}</strong></p>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-bold text-sm">N° ${f.num_factura || f.numFactura}</span>
+                    </div>
+                </div>
+
+                <div class="border rounded p-1.5 text-center bg-slate-50 font-semibold grid grid-cols-3 gap-1">
+                    <div>Ciclo: ${f.ciclo}</div>
+                    <div>Emisión: ${f.emision}</div>
+                    <div>Vencimiento: ${f.vencimiento}</div>
+                </div>
+
+                <table class="w-full border-collapse border border-slate-300 text-center text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 font-bold">
+                            <th class="border border-slate-300 p-1">Lectura actual</th>
+                            <th class="border border-slate-300 p-1">Lectura anterior</th>
+                            <th class="border border-slate-300 p-1">Consumo</th>
+                            <th class="border border-slate-300 p-1">Consumo mínimo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border border-slate-300 p-1">${parseInt(f.lectura_actual || f.lecturaActual).toLocaleString()}</td>
+                            <td class="border border-slate-300 p-1">${parseInt(f.lectura_anterior || f.lecturaAnterior).toLocaleString()}</td>
+                            <td class="border border-slate-300 p-1 font-bold">${parseInt(f.consumo_litros || f.consumoLitros).toLocaleString()} L</td>
+                            <td class="border border-slate-300 p-1">15.000 L</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="text-[10px] space-y-0.5 text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
+                    <p class="font-bold">Información importante sobre el pago:</p>
+                    <p>* Cada usuario abonará veinte mil gs. hasta 15 mil litros de agua utilizadas, eso corresponde al pago mínimo.</p>
+                    <p>* Desde 15.001 hasta 25.000 litros se abonará 2 gs. más por cada litro de agua utilizada.</p>
+                    <p>* Desde 25.001 en adelante se abonará la suma de 3 gs. más por cada litro de agua utilizada.</p>
+                </div>
+
+                <table class="w-full border-collapse border border-slate-300 text-xs">
+                    <thead>
+                        <tr class="bg-slate-100">
+                            <th class="border border-slate-300 p-1 text-left">CONCEPTO:</th>
+                            <th class="border border-slate-300 p-1 text-right w-32">Valor a pagar/Gs.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border border-slate-300 p-1">-Consumo de agua potable.</td>
+                            <td class="border border-slate-300 p-1 text-right">${parseInt(f.monto_agua || f.montoAgua).toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-slate-300 p-1">Otros: (Deuda / Recargos)</td>
+                            <td class="border border-slate-300 p-1 text-right">${parseInt(f.monto_otros || f.montoOtros || 0).toLocaleString()}</td>
+                        </tr>
+                        <tr class="font-bold text-sm bg-slate-50">
+                            <td class="border border-slate-300 p-1">Total a pagar:</td>
+                            <td class="border border-slate-300 p-1 text-right">${parseInt(f.monto_total || f.montoTotal).toLocaleString()}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="pt-4 flex justify-between items-end">
+                    <div class="text-center">
+                        <div class="w-20 h-20 rounded-full border-2 border-purple-800 text-purple-900 flex flex-col items-center justify-center p-1 text-[7px] font-bold leading-tight uppercase">
+                            <span>JUNTA DE SANEAMIENTO</span>
+                            <span class="text-[8px]">SANTA ROSA MI II</span>
+                        </div>
+                    </div>
+                    <div class="text-center min-w-[120px]">
+                        <div class="${f.estado === 'PAGADO' ? 'sello-pagado' : 'sello-pendiente'} font-bold px-3 py-1 text-xs rounded mb-1 uppercase tracking-wider">
+                            ${f.estado}
+                        </div>
+                        <p class="text-[10px] font-semibold">${f.fecha_pago || f.vencimiento}</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('modal-comprobante-cliente').classList.remove('hidden');
+        }
+
+        // 4. REGISTRAR USUARIO
+        async function guardarNuevoUsuario(e) {
+            e.preventDefault();
+            const nuevo = {
+                nombre: document.getElementById('nu-nombre').value,
+                ci: document.getElementById('nu-ci').value,
+                direccion: document.getElementById('nu-direccion').value,
+                medidor: document.getElementById('nu-medidor').value,
+                lecturaAnterior: parseInt(document.getElementById('nu-lectura').value) || 0
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/usuarios`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevo)
+                });
+
+                if (res.ok) {
+                    alert('Usuario registrado exitosamente.');
+                    cerrarModalNuevoUsuario();
+                    cargarUsuariosDesdeBD();
+                } else {
+                    alert('Error al registrar usuario.');
+                }
+            } catch (error) {
+                alert('Error de conexión con el servidor.');
+            }
+        }
+
+        // 5. EMITIR FACTURA
+        async function guardarFactura(e) {
+            e.preventDefault();
+            const idUsuario = parseInt(document.getElementById('select-usuario').value);
+            const userObj = usuarios.find(u => u.id === idUsuario);
+
+            if (!userObj) return alert('Seleccione un usuario válido');
+
+            const ant = parseInt(document.getElementById('form-lectura-anterior').value) || 0;
+            const act = parseInt(document.getElementById('form-lectura-actual').value) || 0;
+            const otros = parseInt(document.getElementById('form-otros').value) || 0;
+            const consumo = Math.max(0, act - ant);
+
+            let montoAgua = 20000;
+            if (consumo > 15000 && consumo <= 25000) {
+                montoAgua += (consumo - 15000) * 2;
+            } else if (consumo > 25000) {
+                montoAgua += (10000 * 2) + ((consumo - 25000) * 3);
+            }
+
+            const nuevaFactura = {
+                numFactura: document.getElementById('doc-num-factura').innerText || "684",
+                usuarioId: userObj.id,
+                nombre: userObj.nombre,
+                ci: userObj.ci,
+                direccion: userObj.direccion,
+                medidor: userObj.medidor,
+                ciclo: document.getElementById('form-ciclo').value,
+                emision: document.getElementById('form-emision').value,
+                vencimiento: document.getElementById('form-vencimiento').value,
+                lecturaAnterior: ant,
+                lecturaActual: act,
+                consumoLitros: consumo,
+                montoAgua: montoAgua,
+                montoOtros: otros,
+                montoTotal: montoAgua + otros,
+                estado: document.getElementById('form-estado-pago').value
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/facturas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevaFactura)
+                });
+
+                if (res.ok) {
+                    alert('Factura emitida y registrada exitosamente.');
+                    cargarUsuariosDesdeBD();
+                } else {
+                    alert('Error al guardar la factura.');
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+            }
+        }
+
+        // 6. REGISTRAR GASTO
+        async function guardarGasto(e) {
+            e.preventDefault();
+            const nuevoGasto = {
+                categoria: document.getElementById('gasto-categoria').value,
+                monto: parseInt(document.getElementById('gasto-monto').value),
+                fecha: document.getElementById('gasto-fecha').value,
+                descripcion: document.getElementById('gasto-descripcion').value
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/gastos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevoGasto)
+                });
+
+                if (res.ok) {
+                    alert('Gasto registrado con éxito.');
+                    document.getElementById('form-gasto').reset();
+                    cargarGastosDesdeBD();
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+            }
+        }
+
+        // 7. ELIMINAR USUARIO
+        async function eliminarUsuario(id) {
+            if (confirm('¿Está seguro de eliminar este usuario?')) {
+                try {
+                    const res = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        cargarUsuariosDesdeBD();
+                    }
+                } catch (error) {
+                    alert('Error al eliminar usuario.');
+                }
+            }
+        }
+
+        // AUXILIARES
+        function cambiarPestana(pestana) {
+            const vistas = ['cliente', 'lecturas', 'usuarios', 'gastos', 'reportes'];
+            vistas.forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                const tab = document.getElementById(`tab-${v}`);
+                if (tab) {
+                    tab.classList.remove('border-blue-600', 'text-blue-600');
+                    tab.classList.add('border-transparent', 'text-slate-600');
+                }
+            });
+
+            document.getElementById(`view-${pestana}`).classList.remove('hidden');
+            const tabActiva = document.getElementById(`tab-${pestana}`);
+            if (tabActiva) {
+                tabActiva.classList.add('border-blue-600', 'text-blue-600');
+                tabActiva.classList.remove('border-transparent', 'text-slate-600');
+            }
+        }
+
+        function abrirModalLogin() { document.getElementById('modal-login').classList.remove('hidden'); }
+        function cerrarModalLogin() { document.getElementById('modal-login').classList.add('hidden'); }
+        function abrirModalNuevoUsuario() { document.getElementById('modal-usuario').classList.remove('hidden'); }
+        function cerrarModalNuevoUsuario() { document.getElementById('modal-usuario').classList.add('hidden'); }
+        function cerrarModalComprobante() { document.getElementById('modal-comprobante-cliente').classList.add('hidden'); }
+
+        function actualizarVencimientoAuto() {
+            const emisionVal = document.getElementById('form-emision').value;
+            const diasPlazo = parseInt(document.getElementById('form-dias-plazo').value) || 13;
+            if (emisionVal) {
+                const fecha = new Date(emisionVal);
+                fecha.setDate(fecha.getDate() + diasPlazo);
+                document.getElementById('form-vencimiento').value = fecha.toISOString().split('T')[0];
+            }
+        }
+
+        function calcularConsumo() {
+            const ant = parseInt(document.getElementById('form-lectura-anterior').value) || 0;
+            const act = parseInt(document.getElementById('form-lectura-actual').value) || 0;
+            const otros = parseInt(document.getElementById('form-otros').value) || 0;
+
+            const consumo = Math.max(0, act - ant);
+            let montoAgua = 20000;
+
+            if (consumo > 15000 && consumo <= 25000) {
+                montoAgua += (consumo - 15000) * 2;
+            } else if (consumo > 25000) {
+                montoAgua += (10000 * 2) + ((consumo - 25000) * 3);
+            }
+
+            document.getElementById('lbl-consumo-litros').innerText = `${consumo.toLocaleString()} L`;
+            document.getElementById('lbl-monto-agua').innerText = `${montoAgua.toLocaleString()} Gs.`;
+
+            document.getElementById('doc-lectura-actual').innerText = act;
+            document.getElementById('doc-lectura-anterior').innerText = ant;
+            document.getElementById('doc-consumo-litros').innerText = `${consumo.toLocaleString()} L`;
+            document.getElementById('doc-monto-agua').innerText = montoAgua.toLocaleString();
+            document.getElementById('doc-monto-otros').innerText = otros.toLocaleString();
+            document.getElementById('doc-monto-total').innerText = (montoAgua + otros).toLocaleString();
+
+            const estado = document.getElementById('form-estado-pago').value;
+            const sello = document.getElementById('doc-sello-estado');
+            sello.innerText = estado;
+            sello.className = estado === 'PAGADO' ? 'sello-pagado font-bold px-3 py-1 text-sm rounded mb-1 uppercase tracking-wider' : 'sello-pendiente font-bold px-3 py-1 text-sm rounded mb-1 uppercase tracking-wider';
+        }
+
+        function renderUsuarios() {
+            const tbody = document.getElementById('tabla-usuarios-body');
+            tbody.innerHTML = usuarios.map(u => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-bold">${u.medidor}</td>
+                    <td class="p-3">${u.ci}</td>
+                    <td class="p-3 font-semibold">${u.nombre}</td>
+                    <td class="p-3">${u.direccion}</td>
+                    <td class="p-3">${parseInt(u.lectura_anterior || u.lecturaAnterior || 0).toLocaleString()} L</td>
+                    <td class="p-3 text-center">
+                        <button onclick="eliminarUsuario(${u.id})" class="bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded text-xs font-bold">
+                            Eliminar
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSelectUsuarios() {
+            const select = document.getElementById('select-usuario');
+            select.innerHTML = '<option value="">-- Seleccionar --</option>' + 
+                usuarios.map(u => `<option value="${u.id}">${u.nombre} (Medidor: ${u.medidor})</option>`).join('');
+        }
+
+        function cargarDatosUsuarioSeleccionado() {
+            const id = parseInt(document.getElementById('select-usuario').value);
+            const u = usuarios.find(x => x.id === id);
+            if (u) {
+                document.getElementById('form-lectura-anterior').value = u.lectura_anterior || u.lecturaAnterior || 0;
+                document.getElementById('doc-nombre').innerText = u.nombre;
+                document.getElementById('doc-ci').innerText = u.ci;
+                document.getElementById('doc-medidor').innerText = u.medidor;
+                calcularConsumo();
+            }
+        }
+
+        function renderGastos() {
+            const tbody = document.getElementById('tabla-gastos-body');
+            let total = 0;
+            tbody.innerHTML = gastos.map(g => {
+                total += parseInt(g.monto);
+                return `
+                    <tr>
+                        <td class="p-2">${g.fecha}</td>
+                        <td class="p-2 font-bold">${g.categoria}</td>
+                        <td class="p-2">${g.descripcion}</td>
+                        <td class="p-2 text-right font-bold text-red-600">${parseInt(g.monto).toLocaleString()} Gs.</td>
+                    </tr>
+                `;
+            }).join('');
+            document.getElementById('lbl-total-gastos').innerText = `${total.toLocaleString()} Gs.`;
+        }
+
+        function generarReporte() {
+            const totalIngresos = facturas.filter(f => f.estado === 'PAGADO').reduce((acc, f) => acc + parseInt(f.monto_total || f.montoTotal), 0);
+            const totalEgresos = gastos.reduce((acc, g) => acc + parseInt(g.monto), 0);
+            const balanceNeto = totalIngresos - totalEgresos;
+
+            document.getElementById('rep-total-ingresos').innerText = `${totalIngresos.toLocaleString()} Gs.`;
+            document.getElementById('rep-total-egresos').innerText = `${totalEgresos.toLocaleString()} Gs.`;
+            document.getElementById('rep-balance-neto').innerText = `${balanceNeto.toLocaleString()} Gs.`;
+        }
+    </script>
+</body>
+</html>

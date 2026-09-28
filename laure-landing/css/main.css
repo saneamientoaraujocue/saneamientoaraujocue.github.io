@@ -1,0 +1,246 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* VARIABLES DE COLOR Y MEDIDAS */
+:root {
+  --color-acento: #e0a938;
+  --color-oscuro: #161412;
+  --color-oscuro-2: #211d1a;
+  --color-texto: #333;
+  --color-blanco: #ffffff;
+  --color-crema: #f6efe1;
+  --color-crema-2: #ede0c8;
+  --color-tarjeta: #fffbf3;
+  --footer-height: 50px;
+  --header-height: 70px;
+  --main-width: 85%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  color: var(--color-texto);
+  background: linear-gradient(180deg, var(--color-crema) 0%, var(--color-crema-2) 100%);
+  background-attachment: fixed;
+}
+
+.container {
+  width: var(--main-width);
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ===== HEADER ===== */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 0 30px;
+  background-color: var(--color-oscuro);
+  color: var(--color-blanco);
+  box-shadow: 0 0 12px 1px rgba(0, 0, 0, 0.35);
+  min-height: var(--header-height);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.logo-texto {
+  font-family: 'Dancing Script', cursive;
+  font-size: 2.2rem;
+  color: var(--color-acento);
+  line-height: 1;
+}
+
+.logo-sub {
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--color-blanco);
+  opacity: 0.8;
+}
+
+nav ul {
+  display: flex;
+  list-style: none;
+  gap: 25px;
+}
+
+nav ul a {
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-blanco);
+  padding: 4px 2px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+nav ul a:hover {
+  color: var(--color-acento);
+  border-color: var(--color-acento);
+}
+
+/* Botón hamburguesa (oculto en escritorio) */
+.menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  height: 21px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.menu-toggle span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background-color: var(--color-blanco);
+  border-radius: 2px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* ===== MAIN Y SECCIONES GENERALES ===== */
+main {
+  flex: 1;
+}
+
+section h2 {
+  text-align: center;
+  font-size: 2.3rem;
+  margin-bottom: 10px;
+  color: var(--color-oscuro);
+}
+
+.subtitulo {
+  text-align: center;
+  color: #777;
+  font-size: 1.05rem;
+  margin-bottom: 40px;
+}
+
+/* Botones reutilizables */
+.btn {
+  display: inline-block;
+  padding: 14px 32px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.btn-primario {
+  background-color: var(--color-acento);
+  color: var(--color-oscuro);
+  box-shadow: 0 0 15px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primario:hover {
+  transform: scale(1.06);
+  background-color: #f0bc55;
+  box-shadow: 0 0 20px 3px rgba(224, 169, 56, 0.5);
+}
+
+.btn-secundario {
+  background-color: transparent;
+  color: var(--color-blanco);
+  border-color: var(--color-blanco);
+}
+
+.btn-secundario:hover {
+  background-color: var(--color-blanco);
+  color: var(--color-oscuro);
+  transform: scale(1.06);
+}
+
+.btn-chico {
+  padding: 10px 22px;
+  font-size: 0.95rem;
+}
+
+/* Tarjetas reutilizables (valores, horarios) */
+.card {
+  background-color: var(--color-tarjeta);
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  border-top: 5px solid var(--color-acento);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.grid {
+  display: flex;
+  gap: 25px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ===== FOOTER ===== */
+footer {
+  min-height: var(--footer-height);
+  background-color: var(--color-oscuro);
+  color: var(--color-blanco);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 10px;
+}
+
+/* ===== RESPONSIVE: menú hamburguesa en celular ===== */
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: flex;
+  }
+
+  nav {
+    width: 100%;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+
+  nav.abierto {
+    max-height: 300px;
+  }
+
+  nav ul {
+    flex-direction: column;
+    gap: 0;
+    padding: 15px 0;
+  }
+
+  nav ul li {
+    padding: 10px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}

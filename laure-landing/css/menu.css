@@ -1,0 +1,172 @@
+/* ===== MENÚ ===== */
+.menu-section {
+  padding: 55px 0 80px;
+}
+
+.menu-section h2 {
+  margin-top: 15px;
+}
+
+.menu-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 45px;
+}
+
+.tab-btn {
+  padding: 10px 22px;
+  border-radius: 30px;
+  border: 2px solid var(--color-acento);
+  background-color: transparent;
+  color: var(--color-oscuro);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+  background-color: rgba(224, 169, 56, 0.15);
+}
+
+.tab-btn.activo {
+  background-color: var(--color-acento);
+  color: var(--color-oscuro);
+}
+
+.menu-categoria.oculto {
+  display: none;
+}
+
+.menu-nota {
+  text-align: center;
+  font-style: italic;
+  color: #777;
+  margin-bottom: 30px;
+}
+
+.menu-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px 40px;
+}
+
+.menu-item {
+  flex: 1;
+  min-width: 260px;
+  max-width: 100%;
+}
+
+.menu-item-linea {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 2px solid var(--color-acento);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.menu-item h3 {
+  font-size: 1.15rem;
+  color: var(--color-oscuro);
+}
+
+.menu-item .precio {
+  font-weight: 700;
+  color: var(--color-acento);
+  white-space: nowrap;
+  font-size: 1.05rem;
+}
+
+.menu-item p {
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Franja con dos columnas: cada item ocupa la mitad en pantallas grandes */
+.menu-grid .menu-item {
+  flex: 0 1 calc(50% - 20px);
+}
+
+/* Sabores de pizza: sin precio, un poco más compactos */
+.pizza-precios {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 45px;
+}
+
+.tabla-precios {
+  background-color: var(--color-tarjeta);
+  border-radius: 12px;
+  padding: 22px 28px;
+  min-width: 240px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  border-top: 4px solid var(--color-acento);
+}
+
+.tabla-precios h3 {
+  text-align: center;
+  margin-bottom: 12px;
+  color: var(--color-oscuro);
+  font-size: 1.1rem;
+}
+
+.tabla-precios ul {
+  list-style: none;
+}
+
+.tabla-precios li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  color: #555;
+}
+
+.tabla-precios li span:last-child {
+  font-weight: 700;
+  color: var(--color-acento);
+}
+
+.titulo-sabores {
+  text-align: center;
+  font-size: 1.4rem;
+  color: var(--color-oscuro);
+  margin-bottom: 25px;
+}
+
+.menu-grid-sabores .menu-item {
+  flex: 0 1 calc(50% - 20px);
+  background-color: var(--color-tarjeta);
+  padding: 16px 20px;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.menu-grid-sabores .menu-item h3 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+  border-bottom: none;
+}
+
+.menu-grid-sabores .menu-item p {
+  font-size: 0.88rem;
+}
+
+@media (max-width: 700px) {
+  .menu-grid .menu-item,
+  .menu-grid-sabores .menu-item {
+    flex: 0 1 100%;
+  }
+
+  .tab-btn {
+    font-size: 0.85rem;
+    padding: 8px 16px;
+  }
+}
