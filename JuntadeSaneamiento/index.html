@@ -298,6 +298,33 @@
                     </div>
                 </div>
             </div>
+            <!-- FACTURAS EMITIDAS Y COBROS -->
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-5 space-y-3">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h3 class="text-base font-bold text-slate-800">Facturas emitidas y cobros</h3>
+                    <select id="filtro-facturas" onchange="renderFacturasEmitidas()" class="p-2 border rounded bg-slate-50 text-xs">
+                        <option value="PENDIENTE">Pendientes de cobro</option>
+                        <option value="PAGADO">Pagadas</option>
+                        <option value="TODAS">Todas</option>
+                    </select>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-xs uppercase text-slate-500 border-b">
+                                <th class="p-2 text-left">N° Factura</th>
+                                <th class="p-2 text-left">Usuario</th>
+                                <th class="p-2 text-left">Ciclo</th>
+                                <th class="p-2 text-right">Total (Gs.)</th>
+                                <th class="p-2 text-center">Estado</th>
+                                <th class="p-2 text-center">Fecha de pago</th>
+                                <th class="p-2 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-facturas-body"></tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- 3. VISTA ADMIN: PADRÓN DE USUARIOS -->
@@ -399,6 +426,21 @@
                 </div>
             </div>
 
+            <!-- FILTROS DE PERÍODO -->
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Año</label>
+                    <select id="rep-anio" onchange="generarReporte()" class="p-2 border rounded bg-slate-50 text-sm"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mes</label>
+                    <select id="rep-mes" onchange="generarReporte()" class="p-2 border rounded bg-slate-50 text-sm">
+                        <option value="todos">Todo el año</option>
+                        <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- MÉTRICAS CLAVE -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white p-5 rounded-lg border-l-4 border-green-500 shadow-sm border">
@@ -415,6 +457,24 @@
                     <p class="text-xs font-bold text-slate-500 uppercase">Balance Neto (Ganancia/Déficit)</p>
                     <h4 id="rep-balance-neto" class="text-2xl font-bold text-blue-900 mt-1">0 Gs.</h4>
                     <p class="text-[11px] text-slate-400 mt-1">Diferencia neta disponible</p>
+                </div>
+            </div>
+
+            <!-- RESUMEN MES A MES -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
+                <h4 class="text-sm font-bold text-slate-800 mb-3">Resumen mes a mes</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-xs uppercase text-slate-500 border-b">
+                                <th class="p-2 text-left">Mes</th>
+                                <th class="p-2 text-right">Recaudado (Gs.)</th>
+                                <th class="p-2 text-right">Gastos (Gs.)</th>
+                                <th class="p-2 text-right">Balance (Gs.)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-tabla-meses"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -518,6 +578,7 @@
             actualizarVencimientoAuto();
             cargarUsuariosDesdeBD();
             cargarGastosDesdeBD();
+            cargarFacturasDesdeBD();
         };
 
         // 1. CARGA DE DATOS EN VIVO
@@ -534,13 +595,79 @@
             }
         }
 
+        // Evita que un texto de la base se interprete como HTML
+        function esc(t) {
+            return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function hoyLocal() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function renderFacturasEmitidas() {
+            const filtro = document.getElementById('filtro-facturas').value;
+            const lista = facturas.filter(f => filtro === 'TODAS' || f.estado === filtro);
+            document.getElementById('tabla-facturas-body').innerHTML = lista.map(f => `
+                <tr class="border-b border-slate-100">
+                    <td class="p-2 text-xs">${esc(f.num_factura)}</td>
+                    <td class="p-2 text-xs font-semibold text-slate-700">${esc(f.nombre)}</td>
+                    <td class="p-2 text-xs">${esc(f.ciclo)}</td>
+                    <td class="p-2 text-xs text-right">${(Number(f.monto_total) || 0).toLocaleString()}</td>
+                    <td class="p-2 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.estado === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${esc(f.estado)}</span>
+                    </td>
+                    <td class="p-2 text-xs text-center">${f.estado === 'PAGADO' ? esc(f.fecha_pago || '-') : '-'}</td>
+                    <td class="p-2 text-center">
+                        ${f.estado === 'PAGADO' ? '' : `<button onclick="marcarComoPagada(${Number(f.id)})" class="bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold px-2 py-1 rounded">Marcar como pagada</button>`}
+                    </td>
+                </tr>`).join('') ||
+                '<tr><td colspan="7" class="p-3 text-center text-slate-400 text-xs">No hay facturas en esta vista</td></tr>';
+        }
+
+        async function marcarComoPagada(id) {
+            const fecha = prompt('Fecha de pago (AAAA-MM-DD):', hoyLocal());
+            if (fecha === null) return;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha.trim())) {
+                alert('La fecha debe tener el formato AAAA-MM-DD, por ejemplo 2026-11-08.');
+                return;
+            }
+            try {
+                const res = await fetch(`${API_URL}/facturas/${id}/pagar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fechaPago: fecha.trim() })
+                });
+                if (res.ok) {
+                    cargarFacturasDesdeBD();
+                } else {
+                    alert('No se pudo marcar la factura como pagada.');
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+            }
+        }
+
+        async function cargarFacturasDesdeBD() {
+            try {
+                const res = await fetch(`${API_URL}/facturas`);
+                if (res.ok) {
+                    facturas = await res.json();
+                    renderFacturasEmitidas();
+                    refrescarReporte();
+                }
+            } catch (error) {
+                console.error("Error al conectar con la API de facturas:", error);
+            }
+        }
+
         async function cargarGastosDesdeBD() {
             try {
                 const res = await fetch(`${API_URL}/gastos`);
                 if (res.ok) {
                     gastos = await res.json();
                     renderGastos();
-                    generarReporte();
+                    refrescarReporte();
                 }
             } catch (error) {
                 console.error("Error al conectar con la API de gastos:", error);
@@ -800,6 +927,7 @@
                 if (res.ok) {
                     alert('Factura emitida y registrada exitosamente.');
                     cargarUsuariosDesdeBD();
+                    cargarFacturasDesdeBD();
                 } else {
                     alert('Error al guardar la factura.');
                 }
@@ -968,14 +1096,68 @@
             document.getElementById('lbl-total-gastos').innerText = `${total.toLocaleString()} Gs.`;
         }
 
+        const NOMBRES_MES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+        // Llena el selector de años con los años que tienen datos (y el año actual)
+        function llenarAnios() {
+            const sel = document.getElementById('rep-anio');
+            const previo = sel.value;
+            const anios = new Set([String(new Date().getFullYear())]);
+            facturas.forEach(f => { const d = f.fecha_pago || f.emision; if (d) anios.add(String(d).slice(0, 4)); });
+            gastos.forEach(g => { if (g.fecha) anios.add(String(g.fecha).slice(0, 4)); });
+            const lista = [...anios].sort().reverse();
+            sel.innerHTML = '<option value="todos">Todos los años</option>' +
+                lista.map(a => `<option value="${a}">${a}</option>`).join('');
+            sel.value = (previo === 'todos' || lista.includes(previo)) ? previo : String(new Date().getFullYear());
+        }
+
+        function refrescarReporte() {
+            llenarAnios();
+            generarReporte();
+        }
+
         function generarReporte() {
-            const totalIngresos = facturas.filter(f => f.estado === 'PAGADO').reduce((acc, f) => acc + parseInt(f.monto_total || f.montoTotal), 0);
-            const totalEgresos = gastos.reduce((acc, g) => acc + parseInt(g.monto), 0);
+            const anio = document.getElementById('rep-anio').value;
+            const mes = document.getElementById('rep-mes').value;
+            const num = v => Number(v) || 0;
+            const enAnio = fecha => !!fecha && (anio === 'todos' || String(fecha).slice(0, 4) === anio);
+            const enPeriodo = fecha => enAnio(fecha) && (mes === 'todos' || String(fecha).slice(5, 7) === mes);
+
+            // Se cuenta como recaudado lo que está PAGADO, según su fecha de pago
+            const fechaCobro = f => f.fecha_pago || f.emision;
+            const pagadas = facturas.filter(f => f.estado === 'PAGADO');
+            const totalIngresos = pagadas.filter(f => enPeriodo(fechaCobro(f))).reduce((acc, f) => acc + num(f.monto_total ?? f.montoTotal), 0);
+            const totalEgresos = gastos.filter(g => enPeriodo(g.fecha)).reduce((acc, g) => acc + num(g.monto), 0);
             const balanceNeto = totalIngresos - totalEgresos;
 
             document.getElementById('rep-total-ingresos').innerText = `${totalIngresos.toLocaleString()} Gs.`;
             document.getElementById('rep-total-egresos').innerText = `${totalEgresos.toLocaleString()} Gs.`;
             document.getElementById('rep-balance-neto').innerText = `${balanceNeto.toLocaleString()} Gs.`;
+
+            // Resumen mes a mes del año elegido
+            const meses = {};
+            pagadas.filter(f => enAnio(fechaCobro(f))).forEach(f => {
+                const k = String(fechaCobro(f)).slice(0, 7);
+                meses[k] = meses[k] || { ing: 0, egr: 0 };
+                meses[k].ing += num(f.monto_total ?? f.montoTotal);
+            });
+            gastos.filter(g => enAnio(g.fecha)).forEach(g => {
+                const k = String(g.fecha).slice(0, 7);
+                meses[k] = meses[k] || { ing: 0, egr: 0 };
+                meses[k].egr += num(g.monto);
+            });
+            const filas = Object.keys(meses).sort().map(k => {
+                const [a, m] = k.split('-');
+                const { ing, egr } = meses[k];
+                return `<tr class="border-b border-slate-100">
+                    <td class="p-2 font-semibold text-slate-700">${NOMBRES_MES[parseInt(m, 10) - 1]} ${a}</td>
+                    <td class="p-2 text-right text-green-600">${ing.toLocaleString()}</td>
+                    <td class="p-2 text-right text-red-600">${egr.toLocaleString()}</td>
+                    <td class="p-2 text-right font-bold text-blue-900">${(ing - egr).toLocaleString()}</td>
+                </tr>`;
+            });
+            document.getElementById('rep-tabla-meses').innerHTML = filas.join('') ||
+                '<tr><td colspan="4" class="p-3 text-center text-slate-400 text-xs">Sin datos para este período</td></tr>';
         }
     </script>
 </body>
