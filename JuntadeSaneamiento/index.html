@@ -127,6 +127,9 @@
                     <form id="form-lectura" onsubmit="guardarFactura(event)" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Seleccionar Usuario</label>
+                            <input type="text" id="buscar-usuario-form" oninput="renderSelectUsuarios(true)" autocomplete="off"
+                                placeholder="🔍 Buscar por nombre, C.I. o medidor..."
+                                class="w-full p-2 border rounded text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none">
                             <select id="select-usuario" onchange="cargarDatosUsuarioSeleccionado()" required class="w-full p-2 border rounded bg-slate-50 text-sm">
                                 <option value="">-- Seleccionar --</option>
                             </select>
@@ -712,6 +715,10 @@
         }
 
         // 3. BÚSQUEDA PÚBLICA PAGO / CLIENTE 24/7
+        let ultimaBusquedaCliente = '';
+        let ultimaFacturaCliente = null;
+        let historialCliente = [];
+
         async function buscarFacturaCliente() {
             const queryRaw = document.getElementById('input-busqueda-cliente').value;
             const query = queryRaw.replace(/[\s-]/g, '').toLowerCase();
@@ -726,6 +733,9 @@
                 const res = await fetch(`${API_URL}/facturas/buscar?q=${encodeURIComponent(query)}`);
                 if (res.ok) {
                     const f = await res.json();
+                    ultimaBusquedaCliente = query;
+                    ultimaFacturaCliente = f;
+                    historialCliente = [];
                     contenedor.innerHTML = `
                         <div class="bg-white p-5 rounded-lg border shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div class="space-y-1 text-center sm:text-left">
@@ -733,14 +743,20 @@
                                     <span class="font-bold text-slate-800">Factura N° ${f.num_factura || f.numFactura}</span>
                                     <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.estado === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${f.estado}</span>
                                 </div>
-                                <p class="text-xs text-slate-600"><strong>Usuario:</strong> ${f.nombre}</p>
-                                <p class="text-xs text-slate-600"><strong>Medidor:</strong> ${f.medidor}</p>
+                                <p class="text-xs text-slate-600"><strong>Usuario:</strong> ${esc(f.nombre)}</p>
+                                <p class="text-xs text-slate-600"><strong>Medidor:</strong> ${esc(f.medidor)}</p>
                                 <p class="text-sm font-bold text-blue-900">Total a pagar: ${parseInt(f.monto_total || f.montoTotal).toLocaleString()} Gs.</p>
                             </div>
-                            <button onclick='visualizarComprobanteModal(${JSON.stringify(f)})' class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded shadow transition flex items-center gap-1.5 shrink-0">
-                                👁️ Visualizar Comprobante
-                            </button>
+                            <div class="flex flex-col gap-2 shrink-0">
+                                <button onclick="visualizarComprobanteModal(ultimaFacturaCliente)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded shadow transition flex items-center justify-center gap-1.5">
+                                    👁️ Visualizar Comprobante
+                                </button>
+                                <button onclick="verFacturasAnteriores()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs px-4 py-2 rounded shadow-sm transition flex items-center justify-center gap-1.5">
+                                    📂 Visualizar facturas anteriores
+                                </button>
+                            </div>
                         </div>
+                        <div id="historial-cliente" class="mt-4"></div>
                     `;
                 } else {
                     contenedor.innerHTML = `
@@ -756,6 +772,53 @@
                     </div>
                 `;
             }
+        }
+
+        async function verFacturasAnteriores() {
+            const cont = document.getElementById('historial-cliente');
+            if (!cont) return;
+            cont.innerHTML = `<p class="text-center text-sm text-slate-500">Cargando facturas anteriores...</p>`;
+            try {
+                const res = await fetch(`${API_URL}/facturas/historial?q=${encodeURIComponent(ultimaBusquedaCliente)}`);
+                if (!res.ok) {
+                    cont.innerHTML = `<div class="bg-red-50 text-red-700 p-3 rounded-lg text-center text-sm">No se pudieron cargar las facturas anteriores.</div>`;
+                    return;
+                }
+                historialCliente = await res.json();
+                const idActual = ultimaFacturaCliente ? ultimaFacturaCliente.id : null;
+                const otras = historialCliente.filter(f => f.id !== idActual);
+
+                if (otras.length === 0) {
+                    cont.innerHTML = `<div class="bg-slate-50 text-slate-600 p-3 rounded-lg text-center text-sm border">Este usuario no tiene otras facturas registradas.</div>`;
+                    return;
+                }
+
+                cont.innerHTML = `
+                    <div class="bg-white rounded-lg border shadow-sm p-4 space-y-2">
+                        <h4 class="font-bold text-sm text-slate-800">Facturas anteriores (${otras.length})</h4>
+                        ${otras.map(f => `
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t pt-2">
+                                <div class="text-xs text-slate-600 space-y-0.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-800">Factura N° ${esc(f.num_factura)}</span>
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.estado === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${esc(f.estado)}</span>
+                                    </div>
+                                    <div>Ciclo: ${esc(f.ciclo)} · Emisión: ${esc(f.emision)}</div>
+                                    <div class="font-bold text-blue-900">${(Number(f.monto_total) || 0).toLocaleString()} Gs.</div>
+                                </div>
+                                <button onclick="verComprobanteHistorial(${historialCliente.indexOf(f)})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded shadow transition shrink-0">
+                                    👁️ Ver comprobante
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>`;
+            } catch (error) {
+                cont.innerHTML = `<div class="bg-red-50 text-red-700 p-3 rounded-lg text-center text-sm">Error al conectar con el servidor.</div>`;
+            }
+        }
+
+        function verComprobanteHistorial(i) {
+            if (historialCliente[i]) visualizarComprobanteModal(historialCliente[i]);
         }
 
         function visualizarComprobanteModal(f) {
@@ -1061,10 +1124,31 @@
             `).join('');
         }
 
-        function renderSelectUsuarios() {
+        // Quita tildes y mayúsculas para que "Jose" encuentre "José"
+        function normalizarTexto(t) {
+            return String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        }
+
+        function renderSelectUsuarios(conservarSeleccion = false) {
             const select = document.getElementById('select-usuario');
-            select.innerHTML = '<option value="">-- Seleccionar --</option>' + 
-                usuarios.map(u => `<option value="${u.id}">${u.nombre} (Medidor: ${u.medidor})</option>`).join('');
+            const buscador = document.getElementById('buscar-usuario-form');
+            const termino = normalizarTexto(buscador ? buscador.value : '');
+            const seleccionado = conservarSeleccion ? select.value : '';
+
+            const lista = termino
+                ? usuarios.filter(u => normalizarTexto(`${u.nombre} ${u.ci} ${u.medidor}`).includes(termino))
+                : usuarios;
+
+            const encabezado = termino
+                ? (lista.length ? `-- Seleccionar (${lista.length} coincidencia${lista.length === 1 ? '' : 's'}) --` : '-- Sin resultados --')
+                : '-- Seleccionar --';
+
+            select.innerHTML = `<option value="">${encabezado}</option>` +
+                lista.map(u => `<option value="${u.id}">${esc(u.nombre)} (Medidor: ${esc(u.medidor)})</option>`).join('');
+
+            if (seleccionado && lista.some(u => String(u.id) === seleccionado)) {
+                select.value = seleccionado;
+            }
         }
 
         function cargarDatosUsuarioSeleccionado() {
