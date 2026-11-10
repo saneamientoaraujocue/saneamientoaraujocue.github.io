@@ -51,6 +51,8 @@
     <header class="bg-blue-900 text-white shadow-md no-print">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
             <div class="flex items-center space-x-3">
+                <button id="btn-config" onclick="abrirModalConfig()" title="Configuración" aria-label="Configuración"
+                    class="hidden bg-blue-800 hover:bg-blue-700 text-white w-9 h-9 rounded-full flex items-center justify-center text-lg transition">⚙️</button>
                 <div class="bg-white text-blue-900 p-2 rounded-full font-bold text-xl">JS</div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight">Junta de Saneamiento Santa Rosa Mi II</h1>
@@ -105,7 +107,7 @@
                 <h2 class="text-xl font-bold text-slate-800 mb-2">Consulta de Factura de Agua</h2>
                 <p class="text-slate-600 text-sm mb-4">Ingresa tu número de Cédula (C.I.N°), número de Medidor o número de Factura.</p>
                 <div class="flex gap-2">
-                    <input type="text" id="input-busqueda-cliente" placeholder="Ej: 14002162 o 1234567" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="input-busqueda-cliente" onkeydown="if (event.key === 'Enter') buscarFacturaCliente()" placeholder="Ej: 14002162 o 1234567" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                     <button onclick="buscarFacturaCliente()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition">
                         Buscar
                     </button>
@@ -180,8 +182,14 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Otros Conceptos / Deuda Anterior (Gs.)</label>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Otros Conceptos / Recargos (Gs.)</label>
                             <input type="number" id="form-otros" value="0" oninput="calcularConsumo()" class="w-full p-2 border rounded text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Deuda Anterior (automática, Gs.)</label>
+                            <input type="number" id="form-deuda-anterior" value="0" readonly class="w-full p-2 border rounded text-sm bg-slate-100 text-slate-700 font-semibold">
+                            <p id="form-deuda-detalle" class="text-[11px] text-slate-500 mt-1"></p>
                         </div>
 
                         <div>
@@ -272,7 +280,11 @@
                                     <td id="doc-monto-agua" class="border border-slate-300 p-1 text-right">0</td>
                                 </tr>
                                 <tr>
-                                    <td class="border border-slate-300 p-1">Otros: (Deuda / Recargos)</td>
+                                    <td class="border border-slate-300 p-1">Deuda anterior (meses pendientes)</td>
+                                    <td id="doc-monto-deuda" class="border border-slate-300 p-1 text-right">0</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-slate-300 p-1">Otros: (Recargos)</td>
                                     <td id="doc-monto-otros" class="border border-slate-300 p-1 text-right">0</td>
                                 </tr>
                                 <tr class="font-bold text-sm bg-slate-50">
@@ -305,11 +317,17 @@
             <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-5 space-y-3">
                 <div class="flex flex-wrap justify-between items-center gap-3">
                     <h3 class="text-base font-bold text-slate-800">Facturas emitidas y cobros</h3>
-                    <select id="filtro-facturas" onchange="renderFacturasEmitidas()" class="p-2 border rounded bg-slate-50 text-xs">
-                        <option value="PENDIENTE">Pendientes de cobro</option>
-                        <option value="PAGADO">Pagadas</option>
-                        <option value="TODAS">Todas</option>
-                    </select>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="filtro-facturas" onchange="renderFacturasEmitidas()" class="p-2 border rounded bg-slate-50 text-xs">
+                            <option value="PENDIENTE">Pendientes de cobro</option>
+                            <option value="PAGADO">Pagadas</option>
+                            <option value="TRASLADADA">Deuda trasladada</option>
+                            <option value="TODAS">Todas</option>
+                        </select>
+                        <select id="filtro-ciclo-facturas" onchange="renderFacturasEmitidas()" class="p-2 border rounded bg-slate-50 text-xs">
+                            <option value="TODOS">Todos los ciclos</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -319,6 +337,7 @@
                                 <th class="p-2 text-left">Usuario</th>
                                 <th class="p-2 text-left">Ciclo</th>
                                 <th class="p-2 text-right">Total (Gs.)</th>
+                                <th class="p-2 text-right">Pagado / Saldo</th>
                                 <th class="p-2 text-center">Estado</th>
                                 <th class="p-2 text-center">Fecha de pago</th>
                                 <th class="p-2 text-center">Acción</th>
@@ -409,6 +428,7 @@
                                     <th class="p-2">Categoría</th>
                                     <th class="p-2">Descripción</th>
                                     <th class="p-2 text-right">Monto (Gs.)</th>
+                                    <th class="p-2 text-center">Acción</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-gastos-body" class="divide-y divide-slate-200">
@@ -531,6 +551,80 @@
         </div>
     </div>
 
+    <!-- MODAL REGISTRAR PAGO -->
+    <div id="modal-pago" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-slate-800">Registrar pago</h3>
+            <div id="pago-resumen" class="text-xs text-slate-600 bg-slate-50 border rounded p-3 space-y-1"></div>
+            <div class="space-y-3">
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase">Monto que paga (Gs.)</label>
+                        <button type="button" onclick="pagarSaldoCompleto()" class="text-[11px] text-blue-600 underline">Pagar todo el saldo</button>
+                    </div>
+                    <input type="number" id="pago-monto" min="1" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha de pago</label>
+                    <input type="date" id="pago-fecha" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nota (opcional)</label>
+                    <input type="text" id="pago-nota" maxlength="120" placeholder="Ej: pago en efectivo" class="w-full p-2 border rounded text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="cerrarModalPago()" class="px-4 py-2 text-slate-600 text-xs font-semibold">Cancelar</button>
+                <button id="btn-guardar-pago" onclick="guardarPago()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold disabled:opacity-50">Guardar pago</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HISTORIAL DE PAGOS -->
+    <div id="modal-historial-pagos" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-slate-800">Pagos de la factura</h3>
+            <div id="contenido-historial-pagos" class="text-sm"></div>
+            <div class="flex justify-end pt-2">
+                <button onclick="cerrarModalHistorialPagos()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACIÓN DEL ADMINISTRADOR -->
+    <div id="modal-config" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4">
+            <div>
+                <h3 class="text-lg font-bold text-slate-800">⚙️ Configuración</h3>
+                <p class="text-xs text-slate-500">Cambiar el usuario y la contraseña de acceso</p>
+            </div>
+            <p class="text-xs text-slate-600">Sesión iniciada como: <strong id="cfg-usuario-actual"></strong></p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nuevo usuario</label>
+                    <input type="text" id="cfg-nuevo-usuario" maxlength="30" autocomplete="off" class="w-full p-2 border rounded text-sm">
+                    <p class="text-[11px] text-slate-400 mt-1">3 a 30 caracteres: letras, números, punto, guion o guion bajo.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nueva contraseña (opcional)</label>
+                    <input type="password" id="cfg-nueva-pass" autocomplete="new-password" placeholder="Mínimo 8 caracteres" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Repetir nueva contraseña</label>
+                    <input type="password" id="cfg-repetir-pass" autocomplete="new-password" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div class="border-t pt-3">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Contraseña actual (para confirmar)</label>
+                    <input type="password" id="cfg-pass-actual" autocomplete="current-password" class="w-full p-2 border rounded text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="cerrarModalConfig()" class="px-4 py-2 text-slate-600 text-xs font-semibold">Cancelar</button>
+                <button id="btn-guardar-config" onclick="guardarConfiguracionAdmin()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold disabled:opacity-50">Guardar cambios</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL NUEVO USUARIO -->
     <div id="modal-usuario" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
@@ -571,8 +665,10 @@
         const API_URL = "https://saneamientoaraujocue-github-io.onrender.com/api";
 
         let esAdmin = false;
+        let adminActual = null;
         let usuarios = [];
         let facturas = [];
+        let pagos = [];
         let gastos = [];
 
         window.onload = function() {
@@ -603,6 +699,38 @@
             return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
+        function pagadoDe(f) { return Number(f.monto_pagado) || 0; }
+        function saldoDe(f) { return Math.max(0, (Number(f.monto_total ?? f.montoTotal) || 0) - pagadoDe(f)); }
+        function esParcial(f) { return f.estado === 'PENDIENTE' && pagadoDe(f) > 0; }
+
+        function estadoClase(f) {
+            if (f.estado === 'PAGADO') return 'bg-green-100 text-green-700';
+            if (f.estado === 'TRASLADADA') return 'bg-slate-200 text-slate-600';
+            if (esParcial(f)) return 'bg-amber-100 text-amber-700';
+            return 'bg-red-100 text-red-700';
+        }
+
+        function estadoTexto(f) { return esParcial(f) ? 'PARCIAL' : f.estado; }
+
+        // Línea de montos: total, o saldo si ya hubo pagos parciales
+        function resumenMontos(f) {
+            const total = Number(f.monto_total ?? f.montoTotal) || 0;
+            const pagado = pagadoDe(f);
+            if (f.estado === 'PENDIENTE') {
+                return pagado > 0
+                    ? `Saldo a pagar: ${saldoDe(f).toLocaleString()} Gs. <span class="text-xs font-normal text-slate-500">(Total ${total.toLocaleString()} · Pagado ${pagado.toLocaleString()})</span>`
+                    : `Total a pagar: ${total.toLocaleString()} Gs.`;
+            }
+            return `Total: ${total.toLocaleString()} Gs.`;
+        }
+
+        // Aviso "Incluida en la factura N° X" para las deudas trasladadas
+        function notaTraslado(f, lista) {
+            if (f.estado !== 'TRASLADADA') return '';
+            const destino = lista.find(x => Number(x.id) === Number(f.trasladada_a));
+            return `<div class="text-[10px] text-slate-500 mt-0.5">${destino ? 'Incluida en la factura N° ' + esc(destino.num_factura) : 'Incluida en una factura posterior'}</div>`;
+        }
+
         function hoyLocal() {
             const d = new Date();
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -610,55 +738,270 @@
 
         function renderFacturasEmitidas() {
             const filtro = document.getElementById('filtro-facturas').value;
-            const lista = facturas.filter(f => filtro === 'TODAS' || f.estado === filtro);
-            document.getElementById('tabla-facturas-body').innerHTML = lista.map(f => `
+
+            // Selector de ciclo (mes): se arma con los ciclos que existen
+            const selCiclo = document.getElementById('filtro-ciclo-facturas');
+            const cicloPrevio = selCiclo.value;
+            const ciclos = [];
+            facturas.forEach(f => { if (f.ciclo && !ciclos.includes(f.ciclo)) ciclos.push(f.ciclo); });
+            selCiclo.innerHTML = '<option value="TODOS">Todos los ciclos</option>' +
+                ciclos.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+            selCiclo.value = ciclos.includes(cicloPrevio) ? cicloPrevio : 'TODOS';
+            const ciclo = selCiclo.value;
+
+            const lista = facturas.filter(f =>
+                (filtro === 'TODAS' || f.estado === filtro) && (ciclo === 'TODOS' || f.ciclo === ciclo));
+
+            document.getElementById('tabla-facturas-body').innerHTML = lista.map(f => {
+                const cantPagos = pagos.filter(p => Number(p.factura_id) === Number(f.id)).length;
+                let celdaSaldo = '-';
+                if (f.estado === 'PENDIENTE') {
+                    celdaSaldo = `<div class="font-bold text-red-600">Saldo: ${saldoDe(f).toLocaleString()}</div>` +
+                        (pagadoDe(f) > 0 ? `<div class="text-[10px] text-slate-500">Pagado: ${pagadoDe(f).toLocaleString()}</div>` : '');
+                } else if (f.estado === 'PAGADO') {
+                    celdaSaldo = `<div class="font-semibold text-green-700">Saldado</div>`;
+                } else if (pagadoDe(f) > 0) {
+                    celdaSaldo = `<div class="text-[10px] text-slate-500">Pagado: ${pagadoDe(f).toLocaleString()}</div>`;
+                }
+                if (cantPagos > 0) {
+                    celdaSaldo += `<button onclick="verPagosFactura(${Number(f.id)})" class="text-[10px] text-blue-600 underline">Ver pagos (${cantPagos})</button>`;
+                }
+                return `
                 <tr class="border-b border-slate-100">
                     <td class="p-2 text-xs">${esc(f.num_factura)}</td>
                     <td class="p-2 text-xs font-semibold text-slate-700">${esc(f.nombre)}</td>
                     <td class="p-2 text-xs">${esc(f.ciclo)}</td>
-                    <td class="p-2 text-xs text-right">${(Number(f.monto_total) || 0).toLocaleString()}</td>
+                    <td class="p-2 text-xs text-right">
+                        ${(Number(f.monto_total) || 0).toLocaleString()}
+                        ${Number(f.deuda_anterior) > 0 ? `<div class="text-[10px] text-slate-400">incl. deuda anterior ${Number(f.deuda_anterior).toLocaleString()}</div>` : ''}
+                    </td>
+                    <td class="p-2 text-xs text-right">${celdaSaldo}</td>
                     <td class="p-2 text-center">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.estado === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${esc(f.estado)}</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${estadoClase(f)}">${esc(estadoTexto(f))}</span>
+                        ${notaTraslado(f, facturas)}
                     </td>
                     <td class="p-2 text-xs text-center">${f.estado === 'PAGADO' ? esc(f.fecha_pago || '-') : '-'}</td>
                     <td class="p-2 text-center">
-                        ${f.estado === 'PAGADO' ? '' : `<button onclick="marcarComoPagada(${Number(f.id)})" class="bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold px-2 py-1 rounded">Marcar como pagada</button>`}
+                        ${f.estado === 'PENDIENTE' ? `<button onclick="abrirModalPago(${Number(f.id)})" class="bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold px-2 py-1 rounded">Registrar pago</button>` : ''}
                     </td>
-                </tr>`).join('') ||
-                '<tr><td colspan="7" class="p-3 text-center text-slate-400 text-xs">No hay facturas en esta vista</td></tr>';
+                </tr>`;
+            }).join('') ||
+                '<tr><td colspan="8" class="p-3 text-center text-slate-400 text-xs">No hay facturas en esta vista</td></tr>';
         }
 
-        async function marcarComoPagada(id) {
-            const fecha = prompt('Fecha de pago (AAAA-MM-DD):', hoyLocal());
-            if (fecha === null) return;
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha.trim())) {
-                alert('La fecha debe tener el formato AAAA-MM-DD, por ejemplo 2026-11-08.');
-                return;
-            }
+        // ----- Registrar pago (total o parcial) -----
+        let facturaPagoActual = null;
+
+        function abrirModalPago(id) {
+            const f = facturas.find(x => Number(x.id) === Number(id));
+            if (!f || f.estado !== 'PENDIENTE') return;
+            facturaPagoActual = f;
+            const saldo = saldoDe(f);
+            document.getElementById('pago-resumen').innerHTML = `
+                <div><strong>${esc(f.nombre)}</strong> · Factura N° ${esc(f.num_factura)} · ${esc(f.ciclo)}</div>
+                <div>Total: ${(Number(f.monto_total) || 0).toLocaleString()} Gs. · Pagado: ${pagadoDe(f).toLocaleString()} Gs.</div>
+                <div class="font-bold text-red-600">Saldo pendiente: ${saldo.toLocaleString()} Gs.</div>`;
+            const inputMonto = document.getElementById('pago-monto');
+            inputMonto.value = saldo;
+            inputMonto.max = saldo;
+            document.getElementById('pago-fecha').value = hoyLocal();
+            document.getElementById('pago-nota').value = '';
+            document.getElementById('btn-guardar-pago').disabled = false;
+            document.getElementById('modal-pago').classList.remove('hidden');
+        }
+
+        function cerrarModalPago() {
+            document.getElementById('modal-pago').classList.add('hidden');
+            facturaPagoActual = null;
+        }
+
+        function pagarSaldoCompleto() {
+            if (facturaPagoActual) document.getElementById('pago-monto').value = saldoDe(facturaPagoActual);
+        }
+
+        async function guardarPago() {
+            const f = facturaPagoActual;
+            if (!f) return;
+            const saldo = saldoDe(f);
+            const monto = Math.round(Number(document.getElementById('pago-monto').value));
+            const fecha = document.getElementById('pago-fecha').value;
+            const nota = document.getElementById('pago-nota').value.trim();
+
+            if (!Number.isFinite(monto) || monto <= 0) return alert('Ingresa un monto mayor a cero.');
+            if (monto > saldo) return alert(`El monto no puede superar el saldo pendiente (${saldo.toLocaleString()} Gs.).`);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return alert('Elige la fecha del pago.');
+
+            const boton = document.getElementById('btn-guardar-pago');
+            boton.disabled = true;
             try {
-                const res = await fetch(`${API_URL}/facturas/${id}/pagar`, {
-                    method: 'PUT',
+                const res = await fetch(`${API_URL}/facturas/${f.id}/pagos`, {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fechaPago: fecha.trim() })
+                    body: JSON.stringify({ monto, fechaPago: fecha, nota })
                 });
+                const datos = await res.json().catch(() => ({}));
                 if (res.ok) {
-                    cargarFacturasDesdeBD();
+                    cerrarModalPago();
+                    const restante = saldo - monto;
+                    alert(restante > 0
+                        ? `Pago registrado. Saldo pendiente: ${restante.toLocaleString()} Gs.`
+                        : 'Pago registrado. La factura quedó PAGADA.');
+                    await cargarFacturasDesdeBD();
                 } else {
-                    alert('No se pudo marcar la factura como pagada.');
+                    alert(datos.error || 'No se pudo registrar el pago.');
+                    boton.disabled = false;
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+                boton.disabled = false;
+            }
+        }
+
+        // ----- Historial de pagos de una factura (con opción de anular) -----
+        function verPagosFactura(id) {
+            const f = facturas.find(x => Number(x.id) === Number(id));
+            if (!f) return;
+            const lista = pagos
+                .filter(p => Number(p.factura_id) === Number(id))
+                .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || Number(a.id) - Number(b.id));
+            const puedeAnular = f.estado !== 'TRASLADADA';
+
+            document.getElementById('contenido-historial-pagos').innerHTML = `
+                <div class="text-xs text-slate-600 space-y-1 mb-3">
+                    <div><strong>${esc(f.nombre)}</strong> · Factura N° ${esc(f.num_factura)} · ${esc(f.ciclo)}</div>
+                    <div>Total: ${(Number(f.monto_total) || 0).toLocaleString()} Gs. · Pagado: ${pagadoDe(f).toLocaleString()} Gs. · Saldo: ${saldoDe(f).toLocaleString()} Gs.</div>
+                </div>
+                ${lista.length ? `
+                <div class="border rounded divide-y">
+                    ${lista.map(p => `
+                        <div class="flex items-center justify-between gap-2 p-2 text-xs">
+                            <div>
+                                <div class="font-semibold text-slate-800">${esc(p.fecha)} · ${(Number(p.monto) || 0).toLocaleString()} Gs.</div>
+                                ${p.nota ? `<div class="text-slate-500">${esc(p.nota)}</div>` : ''}
+                            </div>
+                            ${puedeAnular ? `<button onclick="anularPago(${Number(p.id)}, ${Number(f.id)})" class="text-[11px] text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 rounded px-2 py-1 font-bold">Anular</button>` : ''}
+                        </div>`).join('')}
+                </div>
+                ${puedeAnular ? '' : '<p class="text-[11px] text-slate-500 mt-2">La deuda de esta factura ya se trasladó a otra factura, por eso sus pagos no se pueden anular.</p>'}
+                ` : '<p class="text-xs text-slate-500">Esta factura no tiene pagos registrados.</p>'}`;
+            document.getElementById('modal-historial-pagos').classList.remove('hidden');
+        }
+
+        function cerrarModalHistorialPagos() {
+            document.getElementById('modal-historial-pagos').classList.add('hidden');
+        }
+
+        async function anularPago(idPago, idFactura) {
+            if (!confirm('¿Anular este pago?\n\nLa factura volverá a tener ese monto como saldo pendiente.')) return;
+            try {
+                const res = await fetch(`${API_URL}/pagos/${idPago}`, { method: 'DELETE' });
+                const datos = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    await cargarFacturasDesdeBD();
+                    verPagosFactura(idFactura);
+                } else {
+                    alert(datos.error || 'No se pudo anular el pago.');
                 }
             } catch (error) {
                 alert('Error al conectar con el servidor.');
             }
         }
 
+        // ----- Configuración del administrador -----
+        function abrirModalConfig() {
+            if (!esAdmin || !adminActual) return;
+            document.getElementById('cfg-usuario-actual').innerText = adminActual.usuario;
+            document.getElementById('cfg-nuevo-usuario').value = adminActual.usuario;
+            document.getElementById('cfg-nueva-pass').value = '';
+            document.getElementById('cfg-repetir-pass').value = '';
+            document.getElementById('cfg-pass-actual').value = '';
+            document.getElementById('btn-guardar-config').disabled = false;
+            document.getElementById('modal-config').classList.remove('hidden');
+        }
+
+        function cerrarModalConfig() {
+            document.getElementById('modal-config').classList.add('hidden');
+            ['cfg-nueva-pass', 'cfg-repetir-pass', 'cfg-pass-actual'].forEach(id => { document.getElementById(id).value = ''; });
+        }
+
+        async function guardarConfiguracionAdmin() {
+            if (!adminActual) return;
+            const nuevoUsuario = document.getElementById('cfg-nuevo-usuario').value.trim();
+            const nuevaPassword = document.getElementById('cfg-nueva-pass').value;
+            const repetir = document.getElementById('cfg-repetir-pass').value;
+            const passwordActual = document.getElementById('cfg-pass-actual').value;
+
+            const cambiaUsuario = nuevoUsuario !== '' && nuevoUsuario !== adminActual.usuario;
+            const cambiaPassword = nuevaPassword !== '';
+
+            if (!cambiaUsuario && !cambiaPassword) return alert('No hay cambios para guardar.');
+            if (cambiaUsuario && !/^[A-Za-z0-9._-]{3,30}$/.test(nuevoUsuario)) {
+                return alert('El usuario debe tener entre 3 y 30 caracteres (letras, números, punto, guion o guion bajo).');
+            }
+            if (cambiaPassword && nuevaPassword.length < 8) return alert('La nueva contraseña debe tener al menos 8 caracteres.');
+            if (cambiaPassword && nuevaPassword !== repetir) return alert('Las contraseñas nuevas no coinciden.');
+            if (!passwordActual) return alert('Escribe tu contraseña actual para confirmar los cambios.');
+
+            const boton = document.getElementById('btn-guardar-config');
+            boton.disabled = true;
+            try {
+                const res = await fetch(`${API_URL}/admin/credenciales`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        usuarioActual: adminActual.usuario,
+                        passwordActual,
+                        nuevoUsuario: cambiaUsuario ? nuevoUsuario : undefined,
+                        nuevaPassword: cambiaPassword ? nuevaPassword : undefined
+                    })
+                });
+                const datos = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    adminActual = datos.admin || adminActual;
+                    cerrarModalConfig();
+                    alert('Datos de acceso actualizados. Usa los nuevos la próxima vez que inicies sesión.');
+                } else {
+                    alert(datos.error || 'No se pudieron guardar los cambios.');
+                    boton.disabled = false;
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+                boton.disabled = false;
+            }
+        }
+
+        // Deuda anterior de un usuario = suma de sus facturas que siguen PENDIENTES
+        function actualizarDeudaAnterior() {
+            const id = parseInt(document.getElementById('select-usuario').value);
+            const pendientes = Number.isInteger(id)
+                ? facturas.filter(f => Number(f.usuario_id) === id && f.estado === 'PENDIENTE')
+                : [];
+            const deuda = pendientes.reduce((acc, f) => acc + saldoDe(f), 0);
+            document.getElementById('form-deuda-anterior').value = deuda;
+            document.getElementById('form-deuda-detalle').innerText = pendientes.length
+                ? `Incluye ${pendientes.length === 1 ? 'el ciclo' : 'los ciclos'}: ${pendientes.map(f => f.ciclo).join(', ')}${pendientes.some(f => pagadoDe(f) > 0) ? ' (saldo después de pagos a cuenta)' : ''}`
+                : 'Sin deuda pendiente';
+            calcularConsumo();
+        }
+
+        // El N° de factura siguiente = el mayor número existente + 1 (la primera es la 684)
+        function actualizarNumeroFactura() {
+            const mayor = facturas.reduce((m, f) => Math.max(m, parseInt(f.num_factura, 10) || 0), 683);
+            document.getElementById('doc-num-factura').innerText = mayor + 1;
+        }
+
         async function cargarFacturasDesdeBD() {
             try {
-                const res = await fetch(`${API_URL}/facturas`);
-                if (res.ok) {
-                    facturas = await res.json();
-                    renderFacturasEmitidas();
-                    refrescarReporte();
-                }
+                const [resFacturas, resPagos] = await Promise.all([
+                    fetch(`${API_URL}/facturas`),
+                    fetch(`${API_URL}/pagos`)
+                ]);
+                if (resFacturas.ok) facturas = await resFacturas.json();
+                if (resPagos.ok) pagos = await resPagos.json();
+                actualizarNumeroFactura();
+                actualizarDeudaAnterior();
+                renderFacturasEmitidas();
+                refrescarReporte();
             } catch (error) {
                 console.error("Error al conectar con la API de facturas:", error);
             }
@@ -690,8 +1033,11 @@
                 });
 
                 if (res.ok) {
+                    const datos = await res.json().catch(() => ({}));
+                    adminActual = datos.admin || { usuario: user };
                     esAdmin = true;
                     cerrarModalLogin();
+                    document.getElementById('btn-config').classList.remove('hidden');
                     document.querySelectorAll('.tab-admin').forEach(el => el.classList.remove('hidden'));
                     document.getElementById('btn-login-toggle').classList.add('hidden');
                     document.getElementById('btn-logout').classList.remove('hidden');
@@ -707,6 +1053,8 @@
 
         function cerrarSesionAdmin() {
             esAdmin = false;
+            adminActual = null;
+            document.getElementById('btn-config').classList.add('hidden');
             document.querySelectorAll('.tab-admin').forEach(el => el.classList.add('hidden'));
             document.getElementById('btn-login-toggle').classList.remove('hidden');
             document.getElementById('btn-logout').classList.add('hidden');
@@ -741,11 +1089,11 @@
                             <div class="space-y-1 text-center sm:text-left">
                                 <div class="flex items-center gap-2 justify-center sm:justify-start">
                                     <span class="font-bold text-slate-800">Factura N° ${f.num_factura || f.numFactura}</span>
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.estado === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${f.estado}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${estadoClase(f)}">${esc(estadoTexto(f))}</span>
                                 </div>
                                 <p class="text-xs text-slate-600"><strong>Usuario:</strong> ${esc(f.nombre)}</p>
                                 <p class="text-xs text-slate-600"><strong>Medidor:</strong> ${esc(f.medidor)}</p>
-                                <p class="text-sm font-bold text-blue-900">Total a pagar: ${parseInt(f.monto_total || f.montoTotal).toLocaleString()} Gs.</p>
+                                <p class="text-sm font-bold text-blue-900">${resumenMontos(f)}</p>
                             </div>
                             <div class="flex flex-col gap-2 shrink-0">
                                 <button onclick="visualizarComprobanteModal(ultimaFacturaCliente)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded shadow transition flex items-center justify-center gap-1.5">
@@ -801,10 +1149,11 @@
                                 <div class="text-xs text-slate-600 space-y-0.5">
                                     <div class="flex items-center gap-2">
                                         <span class="font-bold text-slate-800">Factura N° ${esc(f.num_factura)}</span>
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${f.estado === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${esc(f.estado)}</span>
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${estadoClase(f)}">${esc(estadoTexto(f))}</span>
                                     </div>
                                     <div>Ciclo: ${esc(f.ciclo)} · Emisión: ${esc(f.emision)}</div>
-                                    <div class="font-bold text-blue-900">${(Number(f.monto_total) || 0).toLocaleString()} Gs.</div>
+                                    ${notaTraslado(f, historialCliente)}
+                                    <div class="font-bold text-blue-900">${resumenMontos(f)}</div>
                                 </div>
                                 <button onclick="verComprobanteHistorial(${historialCliente.indexOf(f)})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded shadow transition shrink-0">
                                     👁️ Ver comprobante
@@ -881,6 +1230,10 @@
                             <td class="border border-slate-300 p-1">-Consumo de agua potable.</td>
                             <td class="border border-slate-300 p-1 text-right">${parseInt(f.monto_agua || f.montoAgua).toLocaleString()}</td>
                         </tr>
+                        ${Number(f.deuda_anterior) > 0 ? `<tr>
+                            <td class="border border-slate-300 p-1">Deuda anterior (meses pendientes)</td>
+                            <td class="border border-slate-300 p-1 text-right">${parseInt(f.deuda_anterior).toLocaleString()}</td>
+                        </tr>` : ''}
                         <tr>
                             <td class="border border-slate-300 p-1">Otros: (Deuda / Recargos)</td>
                             <td class="border border-slate-300 p-1 text-right">${parseInt(f.monto_otros || f.montoOtros || 0).toLocaleString()}</td>
@@ -889,6 +1242,14 @@
                             <td class="border border-slate-300 p-1">Total a pagar:</td>
                             <td class="border border-slate-300 p-1 text-right">${parseInt(f.monto_total || f.montoTotal).toLocaleString()}</td>
                         </tr>
+                        ${esParcial(f) ? `<tr>
+                            <td class="border border-slate-300 p-1">Pagado a cuenta:</td>
+                            <td class="border border-slate-300 p-1 text-right">-${pagadoDe(f).toLocaleString()}</td>
+                        </tr>
+                        <tr class="font-bold text-sm bg-slate-50">
+                            <td class="border border-slate-300 p-1">Saldo pendiente:</td>
+                            <td class="border border-slate-300 p-1 text-right">${saldoDe(f).toLocaleString()}</td>
+                        </tr>` : ''}
                     </tbody>
                 </table>
 
@@ -901,7 +1262,7 @@
                     </div>
                     <div class="text-center min-w-[120px]">
                         <div class="${f.estado === 'PAGADO' ? 'sello-pagado' : 'sello-pendiente'} font-bold px-3 py-1 text-xs rounded mb-1 uppercase tracking-wider">
-                            ${f.estado}
+                            ${esc(estadoTexto(f))}
                         </div>
                         <p class="text-[10px] font-semibold">${f.fecha_pago || f.vencimiento}</p>
                     </div>
@@ -949,6 +1310,12 @@
 
             if (!userObj) return alert('Seleccione un usuario válido');
 
+            // Evita emitir como PAGADA una factura que todavía no se cobró
+            if (document.getElementById('form-estado-pago').value === 'PAGADO' &&
+                !confirm('Esta factura se va a emitir como PAGADA.\n\nSi todavía no se cobró, cancela y elige PENDIENTE (después puedes marcarla como pagada).\n\n¿Emitir como PAGADA?')) {
+                return;
+            }
+
             const ant = parseInt(document.getElementById('form-lectura-anterior').value) || 0;
             const act = parseInt(document.getElementById('form-lectura-actual').value) || 0;
             const otros = parseInt(document.getElementById('form-otros').value) || 0;
@@ -960,6 +1327,8 @@
             } else if (consumo > 25000) {
                 montoAgua += (10000 * 2) + ((consumo - 25000) * 3);
             }
+
+            const deuda = parseInt(document.getElementById('form-deuda-anterior').value) || 0;
 
             const nuevaFactura = {
                 numFactura: document.getElementById('doc-num-factura').innerText || "684",
@@ -976,7 +1345,8 @@
                 consumoLitros: consumo,
                 montoAgua: montoAgua,
                 montoOtros: otros,
-                montoTotal: montoAgua + otros,
+                deudaAnterior: deuda,
+                montoTotal: montoAgua + otros + deuda,
                 estado: document.getElementById('form-estado-pago').value
             };
 
@@ -989,6 +1359,9 @@
 
                 if (res.ok) {
                     alert('Factura emitida y registrada exitosamente.');
+                    // La próxima factura empieza otra vez como PENDIENTE
+                    document.getElementById('form-estado-pago').value = 'PENDIENTE';
+                    calcularConsumo();
                     cargarUsuariosDesdeBD();
                     cargarFacturasDesdeBD();
                 } else {
@@ -1097,8 +1470,10 @@
             document.getElementById('doc-lectura-anterior').innerText = ant;
             document.getElementById('doc-consumo-litros').innerText = `${consumo.toLocaleString()} L`;
             document.getElementById('doc-monto-agua').innerText = montoAgua.toLocaleString();
+            const deuda = parseInt(document.getElementById('form-deuda-anterior').value) || 0;
             document.getElementById('doc-monto-otros').innerText = otros.toLocaleString();
-            document.getElementById('doc-monto-total').innerText = (montoAgua + otros).toLocaleString();
+            document.getElementById('doc-monto-deuda').innerText = deuda.toLocaleString();
+            document.getElementById('doc-monto-total').innerText = (montoAgua + otros + deuda).toLocaleString();
 
             const estado = document.getElementById('form-estado-pago').value;
             const sello = document.getElementById('doc-sello-estado');
@@ -1149,6 +1524,7 @@
             if (seleccionado && lista.some(u => String(u.id) === seleccionado)) {
                 select.value = seleccionado;
             }
+            actualizarDeudaAnterior();
         }
 
         function cargarDatosUsuarioSeleccionado() {
@@ -1159,7 +1535,7 @@
                 document.getElementById('doc-nombre').innerText = u.nombre;
                 document.getElementById('doc-ci').innerText = u.ci;
                 document.getElementById('doc-medidor').innerText = u.medidor;
-                calcularConsumo();
+                actualizarDeudaAnterior();
             }
         }
 
@@ -1167,17 +1543,36 @@
             const tbody = document.getElementById('tabla-gastos-body');
             let total = 0;
             tbody.innerHTML = gastos.map(g => {
-                total += parseInt(g.monto);
+                total += parseInt(g.monto) || 0;
                 return `
                     <tr>
-                        <td class="p-2">${g.fecha}</td>
-                        <td class="p-2 font-bold">${g.categoria}</td>
-                        <td class="p-2">${g.descripcion}</td>
-                        <td class="p-2 text-right font-bold text-red-600">${parseInt(g.monto).toLocaleString()} Gs.</td>
+                        <td class="p-2">${esc(g.fecha)}</td>
+                        <td class="p-2 font-bold">${esc(g.categoria)}</td>
+                        <td class="p-2">${esc(g.descripcion)}</td>
+                        <td class="p-2 text-right font-bold text-red-600">${(parseInt(g.monto) || 0).toLocaleString()} Gs.</td>
+                        <td class="p-2 text-center">
+                            <button onclick="eliminarGasto(${Number(g.id)})" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] font-bold px-2 py-1 rounded">🗑️ Eliminar</button>
+                        </td>
                     </tr>
                 `;
-            }).join('');
+            }).join('') || '<tr><td colspan="5" class="p-3 text-center text-slate-400">No hay gastos registrados</td></tr>';
             document.getElementById('lbl-total-gastos').innerText = `${total.toLocaleString()} Gs.`;
+        }
+
+        async function eliminarGasto(id) {
+            const g = gastos.find(x => Number(x.id) === Number(id));
+            const detalle = g ? `${g.categoria} - ${(parseInt(g.monto) || 0).toLocaleString()} Gs. (${g.fecha})` : 'este gasto';
+            if (!confirm(`¿Eliminar el gasto "${detalle}"?\n\nEsta acción no se puede deshacer.`)) return;
+            try {
+                const res = await fetch(`${API_URL}/gastos/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    cargarGastosDesdeBD();
+                } else {
+                    alert('No se pudo eliminar el gasto.');
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+            }
         }
 
         const NOMBRES_MES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -1187,7 +1582,7 @@
             const sel = document.getElementById('rep-anio');
             const previo = sel.value;
             const anios = new Set([String(new Date().getFullYear())]);
-            facturas.forEach(f => { const d = f.fecha_pago || f.emision; if (d) anios.add(String(d).slice(0, 4)); });
+            pagos.forEach(p => { if (p.fecha) anios.add(String(p.fecha).slice(0, 4)); });
             gastos.forEach(g => { if (g.fecha) anios.add(String(g.fecha).slice(0, 4)); });
             const lista = [...anios].sort().reverse();
             sel.innerHTML = '<option value="todos">Todos los años</option>' +
@@ -1207,10 +1602,8 @@
             const enAnio = fecha => !!fecha && (anio === 'todos' || String(fecha).slice(0, 4) === anio);
             const enPeriodo = fecha => enAnio(fecha) && (mes === 'todos' || String(fecha).slice(5, 7) === mes);
 
-            // Se cuenta como recaudado lo que está PAGADO, según su fecha de pago
-            const fechaCobro = f => f.fecha_pago || f.emision;
-            const pagadas = facturas.filter(f => f.estado === 'PAGADO');
-            const totalIngresos = pagadas.filter(f => enPeriodo(fechaCobro(f))).reduce((acc, f) => acc + num(f.monto_total ?? f.montoTotal), 0);
+            // Lo recaudado es la suma de los pagos recibidos (totales o parciales), según su fecha
+            const totalIngresos = pagos.filter(p => enPeriodo(p.fecha)).reduce((acc, p) => acc + num(p.monto), 0);
             const totalEgresos = gastos.filter(g => enPeriodo(g.fecha)).reduce((acc, g) => acc + num(g.monto), 0);
             const balanceNeto = totalIngresos - totalEgresos;
 
@@ -1220,10 +1613,10 @@
 
             // Resumen mes a mes del año elegido
             const meses = {};
-            pagadas.filter(f => enAnio(fechaCobro(f))).forEach(f => {
-                const k = String(fechaCobro(f)).slice(0, 7);
+            pagos.filter(p => enAnio(p.fecha)).forEach(p => {
+                const k = String(p.fecha).slice(0, 7);
                 meses[k] = meses[k] || { ing: 0, egr: 0 };
-                meses[k].ing += num(f.monto_total ?? f.montoTotal);
+                meses[k].ing += num(p.monto);
             });
             gastos.filter(g => enAnio(g.fecha)).forEach(g => {
                 const k = String(g.fecha).slice(0, 7);
