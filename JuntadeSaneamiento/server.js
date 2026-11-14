@@ -247,10 +247,19 @@ app.post('/api/facturas', async (req, res) => {
     // Si ya se emite como PAGADO, se registra la fecha de pago (la enviada o la de emisión)
     const fecha_pago = estado === 'PAGADO' ? (f.fechaPago || f.fecha_pago || emision || hoyParaguay()) : null;
 
+    // Las fechas deben venir como AAAA-MM-DD: de ellas depende en qué mes cuentan los reportes
+    if (!fechaValida(emision)) {
+        return res.status(400).json({ error: 'La fecha de emisión debe tener el formato AAAA-MM-DD' });
+    }
+    if (estado === 'PAGADO' && !fechaValida(fecha_pago)) {
+        return res.status(400).json({ error: 'La fecha de pago debe tener el formato AAAA-MM-DD' });
+    }
+
     const tieneUsuario = usuario_id !== undefined && usuario_id !== null && usuario_id !== '';
-    const client = await pool.connect();
+    let client;
 
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
 
         // Deuda anterior automática: suma de las facturas de este usuario que siguen PENDIENTES
@@ -293,10 +302,10 @@ app.post('/api/facturas', async (req, res) => {
         await client.query('COMMIT');
         res.json(nueva);
     } catch (err) {
-        await client.query('ROLLBACK').catch(() => {});
+        if (client) await client.query('ROLLBACK').catch(() => {});
         res.status(500).json({ error: err.message });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 });
 
@@ -304,8 +313,9 @@ app.post('/api/facturas', async (req, res) => {
 // PAGOS (totales o parciales) sobre una factura PENDIENTE
 // ------------------------------------------
 async function registrarPago(facturaId, monto, fecha, nota) {
-    const client = await pool.connect();
+    let client;
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
 
         const fr = await client.query(
@@ -363,10 +373,10 @@ async function registrarPago(facturaId, monto, fecha, nota) {
         await client.query('COMMIT');
         return { status: 200, factura: actualizada.rows[0], pago: pago.rows[0] };
     } catch (err) {
-        await client.query('ROLLBACK').catch(() => {});
+        if (client) await client.query('ROLLBACK').catch(() => {});
         throw err;
     } finally {
-        client.release();
+        if (client) client.release();
     }
 }
 
@@ -439,8 +449,9 @@ app.delete('/api/pagos/:id', async (req, res) => {
         return res.status(400).json({ error: 'Id de pago inválido' });
     }
 
-    const client = await pool.connect();
+    let client;
     try {
+        client = await pool.connect();
         await client.query('BEGIN');
 
         const pr = await client.query('SELECT * FROM pagos WHERE id = $1', [id]);
@@ -475,10 +486,10 @@ app.delete('/api/pagos/:id', async (req, res) => {
         await client.query('COMMIT');
         res.json({ mensaje: 'Pago anulado', factura: actualizada.rows[0] });
     } catch (err) {
-        await client.query('ROLLBACK').catch(() => {});
+        if (client) await client.query('ROLLBACK').catch(() => {});
         res.status(500).json({ error: err.message });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 });
 
@@ -496,6 +507,14 @@ app.get('/api/gastos', async (req, res) => {
 
 app.post('/api/gastos', async (req, res) => {
     const { categoria, monto, fecha, descripcion } = req.body;
+
+    if (!categoria || !(Number(monto) > 0)) {
+        return res.status(400).json({ error: 'Faltan la categoría o el monto del gasto' });
+    }
+    if (!fechaValida(fecha)) {
+        return res.status(400).json({ error: 'La fecha del gasto debe tener el formato AAAA-MM-DD' });
+    }
+
     try {
         const result = await pool.query(
             'INSERT INTO gastos (categoria, monto, fecha, descripcion) VALUES ($1, $2, $3, $4) RETURNING *',

@@ -140,7 +140,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ciclo / Período</label>
-                                <input type="text" id="form-ciclo" value="7/26 - Julio" required class="w-full p-2 border rounded text-sm">
+                                <input type="text" id="form-ciclo" value="7/26 - Julio" required oninput="calcularConsumo()" class="w-full p-2 border rounded text-sm">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Plazo de Pago (Días)</label>
@@ -151,7 +151,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión</label>
-                                <input type="date" id="form-emision" onchange="actualizarVencimientoAuto()" required class="w-full p-2 border rounded text-sm">
+                                <input type="date" id="form-emision" onchange="alCambiarEmision()" required class="w-full p-2 border rounded text-sm">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Vencimiento</label>
@@ -194,10 +194,16 @@
 
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Estado de Pago</label>
-                            <select id="form-estado-pago" class="w-full p-2 border rounded text-sm font-semibold">
+                            <select id="form-estado-pago" onchange="alCambiarEstado()" class="w-full p-2 border rounded text-sm font-semibold">
                                 <option value="PENDIENTE" class="text-red-600">PENDIENTE</option>
                                 <option value="PAGADO" class="text-green-600">PAGADO</option>
                             </select>
+                        </div>
+
+                        <div id="bloque-fecha-pago" class="hidden">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha de pago</label>
+                            <input type="date" id="form-fecha-pago" oninput="actualizarHintFechaPago()" class="w-full p-2 border rounded text-sm">
+                            <p id="hint-fecha-pago" class="text-[11px] text-slate-500 mt-1"></p>
                         </div>
 
                         <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded transition">
@@ -336,6 +342,7 @@
                                 <th class="p-2 text-left">N° Factura</th>
                                 <th class="p-2 text-left">Usuario</th>
                                 <th class="p-2 text-left">Ciclo</th>
+                                <th class="p-2 text-left">Emisión</th>
                                 <th class="p-2 text-right">Total (Gs.)</th>
                                 <th class="p-2 text-right">Pagado / Saldo</th>
                                 <th class="p-2 text-center">Estado</th>
@@ -401,7 +408,8 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha</label>
-                            <input type="date" id="gasto-fecha" required class="w-full p-2 border rounded text-sm">
+                            <input type="date" id="gasto-fecha" required oninput="actualizarHintGasto()" class="w-full p-2 border rounded text-sm">
+                            <p id="gasto-mes-hint" class="text-[11px] text-slate-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Descripción / Concepto</label>
@@ -418,6 +426,16 @@
                     <div class="flex justify-between items-center">
                         <h3 class="text-md font-bold text-slate-800">Historial de Egresos</h3>
                         <span class="text-sm font-bold text-red-600">Total Gastos: <span id="lbl-total-gastos">0 Gs.</span></span>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <select id="gastos-filtro-anio" onchange="renderGastos()" class="p-2 border rounded bg-slate-50 text-xs">
+                            <option value="todos">Todos los años</option>
+                        </select>
+                        <select id="gastos-filtro-mes" onchange="renderGastos()" class="p-2 border rounded bg-slate-50 text-xs">
+                            <option value="todos">Todos los meses</option>
+                            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                        </select>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -566,7 +584,8 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha de pago</label>
-                    <input type="date" id="pago-fecha" class="w-full p-2 border rounded text-sm">
+                    <input type="date" id="pago-fecha" oninput="actualizarHintPago()" class="w-full p-2 border rounded text-sm">
+                    <p id="pago-mes-hint" class="text-[11px] text-slate-500 mt-1"></p>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nota (opcional)</label>
@@ -672,9 +691,10 @@
         let gastos = [];
 
         window.onload = function() {
-            document.getElementById('form-emision').value = new Date().toISOString().split('T')[0];
-            document.getElementById('gasto-fecha').value = new Date().toISOString().split('T')[0];
-            actualizarVencimientoAuto();
+            document.getElementById('form-emision').value = hoyLocal();
+            document.getElementById('gasto-fecha').value = hoyLocal();
+            alCambiarEmision();
+            actualizarHintGasto();
             cargarUsuariosDesdeBD();
             cargarGastosDesdeBD();
             cargarFacturasDesdeBD();
@@ -771,6 +791,7 @@
                     <td class="p-2 text-xs">${esc(f.num_factura)}</td>
                     <td class="p-2 text-xs font-semibold text-slate-700">${esc(f.nombre)}</td>
                     <td class="p-2 text-xs">${esc(f.ciclo)}</td>
+                    <td class="p-2 text-xs">${esc(f.emision)}</td>
                     <td class="p-2 text-xs text-right">
                         ${(Number(f.monto_total) || 0).toLocaleString()}
                         ${Number(f.deuda_anterior) > 0 ? `<div class="text-[10px] text-slate-400">incl. deuda anterior ${Number(f.deuda_anterior).toLocaleString()}</div>` : ''}
@@ -786,7 +807,7 @@
                     </td>
                 </tr>`;
             }).join('') ||
-                '<tr><td colspan="8" class="p-3 text-center text-slate-400 text-xs">No hay facturas en esta vista</td></tr>';
+                '<tr><td colspan="9" class="p-3 text-center text-slate-400 text-xs">No hay facturas en esta vista</td></tr>';
         }
 
         // ----- Registrar pago (total o parcial) -----
@@ -805,6 +826,7 @@
             inputMonto.value = saldo;
             inputMonto.max = saldo;
             document.getElementById('pago-fecha').value = hoyLocal();
+            actualizarHintPago();
             document.getElementById('pago-nota').value = '';
             document.getElementById('btn-guardar-pago').disabled = false;
             document.getElementById('modal-pago').classList.remove('hidden');
@@ -830,6 +852,11 @@
             if (!Number.isFinite(monto) || monto <= 0) return alert('Ingresa un monto mayor a cero.');
             if (monto > saldo) return alert(`El monto no puede superar el saldo pendiente (${saldo.toLocaleString()} Gs.).`);
             if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return alert('Elige la fecha del pago.');
+            const emisionFactura = String(f.emision || '').slice(0, 10);
+            if (emisionFactura && fecha < emisionFactura &&
+                !confirm(`La fecha de pago (${fecha}) es anterior a la emisión de la factura (${emisionFactura}).\n\n¿Registrar el pago con esa fecha?`)) return;
+            if (fecha > hoyLocal() &&
+                !confirm(`La fecha de pago (${fecha}) es una fecha futura.\n\n¿Registrar el pago con esa fecha?`)) return;
 
             const boton = document.getElementById('btn-guardar-pago');
             boton.disabled = true;
@@ -843,9 +870,9 @@
                 if (res.ok) {
                     cerrarModalPago();
                     const restante = saldo - monto;
-                    alert(restante > 0
+                    alert((restante > 0
                         ? `Pago registrado. Saldo pendiente: ${restante.toLocaleString()} Gs.`
-                        : 'Pago registrado. La factura quedó PAGADA.');
+                        : 'Pago registrado. La factura quedó PAGADA.') + `\n\nCuenta en el reporte de ${textoMes(fecha)}.`);
                     await cargarFacturasDesdeBD();
                 } else {
                     alert(datos.error || 'No se pudo registrar el pago.');
@@ -1312,7 +1339,7 @@
 
             // Evita emitir como PAGADA una factura que todavía no se cobró
             if (document.getElementById('form-estado-pago').value === 'PAGADO' &&
-                !confirm('Esta factura se va a emitir como PAGADA.\n\nSi todavía no se cobró, cancela y elige PENDIENTE (después puedes marcarla como pagada).\n\n¿Emitir como PAGADA?')) {
+                !confirm('Esta factura se va a emitir como PAGADA con fecha de pago ' + document.getElementById('form-fecha-pago').value + '.\n\nSi todavía no se cobró, cancela y elige PENDIENTE (después puedes registrar el pago).\n\n¿Emitir como PAGADA?')) {
                 return;
             }
 
@@ -1350,6 +1377,13 @@
                 estado: document.getElementById('form-estado-pago').value
             };
 
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFactura.emision)) return alert('Elige la fecha de emisión.');
+            if (nuevaFactura.estado === 'PAGADO') {
+                const fechaPago = document.getElementById('form-fecha-pago').value;
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaPago)) return alert('Elige la fecha de pago.');
+                nuevaFactura.fechaPago = fechaPago;
+            }
+
             try {
                 const res = await fetch(`${API_URL}/facturas`, {
                     method: 'POST',
@@ -1361,11 +1395,12 @@
                     alert('Factura emitida y registrada exitosamente.');
                     // La próxima factura empieza otra vez como PENDIENTE
                     document.getElementById('form-estado-pago').value = 'PENDIENTE';
-                    calcularConsumo();
+                    alCambiarEstado();
                     cargarUsuariosDesdeBD();
                     cargarFacturasDesdeBD();
                 } else {
-                    alert('Error al guardar la factura.');
+                    const datos = await res.json().catch(() => ({}));
+                    alert('Error al guardar la factura.' + (datos.error ? '\n\nDetalle: ' + datos.error : ''));
                 }
             } catch (error) {
                 alert('Error al conectar con el servidor.');
@@ -1381,6 +1416,7 @@
                 fecha: document.getElementById('gasto-fecha').value,
                 descripcion: document.getElementById('gasto-descripcion').value
             };
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(nuevoGasto.fecha)) return alert('Elige la fecha del gasto.');
 
             try {
                 const res = await fetch(`${API_URL}/gastos`, {
@@ -1390,9 +1426,15 @@
                 });
 
                 if (res.ok) {
-                    alert('Gasto registrado con éxito.');
+                    alert(`Gasto registrado con éxito.\n\nCuenta en el reporte de ${textoMes(nuevoGasto.fecha)}.`);
                     document.getElementById('form-gasto').reset();
+                    // Se conserva la fecha usada: al cargar varios gastos del mismo mes no hay que volver a elegirla
+                    document.getElementById('gasto-fecha').value = nuevoGasto.fecha;
+                    actualizarHintGasto();
                     cargarGastosDesdeBD();
+                } else {
+                    const datos = await res.json().catch(() => ({}));
+                    alert('No se pudo registrar el gasto.' + (datos.error ? '\n\nDetalle: ' + datos.error : ''));
                 }
             } catch (error) {
                 alert('Error al conectar con el servidor.');
@@ -1401,11 +1443,15 @@
 
         // 7. ELIMINAR USUARIO
         async function eliminarUsuario(id) {
-            if (confirm('¿Está seguro de eliminar este usuario?')) {
+            if (confirm('¿Está seguro de eliminar este usuario?\n\nSus facturas y pagos ya registrados NO se borran: se conservan y siguen contando en los reportes.')) {
                 try {
                     const res = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE' });
                     if (res.ok) {
                         cargarUsuariosDesdeBD();
+                        cargarFacturasDesdeBD();
+                    } else {
+                        const datos = await res.json().catch(() => ({}));
+                        alert('No se pudo eliminar el usuario.' + (datos.error ? '\n\nDetalle: ' + datos.error : ''));
                     }
                 } catch (error) {
                     alert('Error al eliminar usuario.');
@@ -1442,14 +1488,80 @@
         function actualizarVencimientoAuto() {
             const emisionVal = document.getElementById('form-emision').value;
             const diasPlazo = parseInt(document.getElementById('form-dias-plazo').value) || 13;
-            if (emisionVal) {
-                const fecha = new Date(emisionVal);
-                fecha.setDate(fecha.getDate() + diasPlazo);
-                document.getElementById('form-vencimiento').value = fecha.toISOString().split('T')[0];
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(emisionVal || '');
+            if (m) {
+                // Se calcula en UTC para que la zona horaria nunca corra la fecha un día
+                const f = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + diasPlazo));
+                document.getElementById('form-vencimiento').value = f.toISOString().split('T')[0];
             }
+            actualizarFechasVistaPrevia();
+        }
+
+        // "2026-01-15" -> "Enero 2026"
+        function textoMes(iso) {
+            const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(iso || '');
+            return m ? `${NOMBRES_MES[parseInt(m[2], 10) - 1]} ${m[1]}` : '';
+        }
+
+        // "2026-01-15" -> "1/26 - Enero"
+        function cicloDesdeFecha(iso) {
+            const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(iso || '');
+            return m ? `${parseInt(m[2], 10)}/${m[1].slice(2)} - ${NOMBRES_MES[parseInt(m[2], 10) - 1]}` : '';
+        }
+
+        // Al cambiar la fecha de emisión: se actualiza el ciclo (editable), el vencimiento y la fecha de pago
+        function alCambiarEmision() {
+            const emision = document.getElementById('form-emision').value;
+            const ciclo = cicloDesdeFecha(emision);
+            if (ciclo) document.getElementById('form-ciclo').value = ciclo;
+            if (document.getElementById('form-estado-pago').value === 'PAGADO' && emision) {
+                document.getElementById('form-fecha-pago').value = emision;
+                actualizarHintFechaPago();
+            }
+            actualizarVencimientoAuto();
+            calcularConsumo();
+        }
+
+        // Al cambiar el estado: PAGADO pide la fecha de pago
+        function alCambiarEstado() {
+            const pagado = document.getElementById('form-estado-pago').value === 'PAGADO';
+            const campo = document.getElementById('form-fecha-pago');
+            document.getElementById('bloque-fecha-pago').classList.toggle('hidden', !pagado);
+            if (pagado) {
+                if (!campo.value) campo.value = document.getElementById('form-emision').value || hoyLocal();
+                actualizarHintFechaPago();
+            } else {
+                campo.value = '';
+            }
+            calcularConsumo();
+        }
+
+        function actualizarHintFechaPago() {
+            const v = document.getElementById('form-fecha-pago').value;
+            document.getElementById('hint-fecha-pago').textContent = v ? `Este cobro contará en el reporte de ${textoMes(v)}.` : 'Elige la fecha de pago.';
+        }
+
+        function actualizarHintPago() {
+            const v = document.getElementById('pago-fecha').value;
+            document.getElementById('pago-mes-hint').textContent = v ? `Este pago contará en el reporte de ${textoMes(v)}.` : 'Elige la fecha en que se recibió el dinero.';
+        }
+
+        function actualizarHintGasto() {
+            const v = document.getElementById('gasto-fecha').value;
+            document.getElementById('gasto-mes-hint').textContent = v ? `Este gasto contará en el reporte de ${textoMes(v)}.` : 'Elige la fecha del gasto.';
+        }
+
+        // La vista previa del comprobante muestra lo mismo que tiene el formulario
+        function actualizarFechasVistaPrevia() {
+            const fmt = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : '-'; };
+            const ciclo = (document.getElementById('form-ciclo').value || '').split(' - ')[0].trim();
+            document.getElementById('doc-ciclo').textContent = ciclo || '-';
+            document.getElementById('doc-emision').textContent = fmt(document.getElementById('form-emision').value);
+            document.getElementById('doc-vencimiento').textContent = fmt(document.getElementById('form-vencimiento').value);
         }
 
         function calcularConsumo() {
+            actualizarFechasVistaPrevia();
             const ant = parseInt(document.getElementById('form-lectura-anterior').value) || 0;
             const act = parseInt(document.getElementById('form-lectura-actual').value) || 0;
             const otros = parseInt(document.getElementById('form-otros').value) || 0;
@@ -1541,8 +1653,25 @@
 
         function renderGastos() {
             const tbody = document.getElementById('tabla-gastos-body');
+
+            // Filtros de año y mes (el de año se arma con los años que tienen gastos)
+            const selAnio = document.getElementById('gastos-filtro-anio');
+            const anioPrevio = selAnio.value;
+            const anios = new Set();
+            gastos.forEach(g => { if (g.fecha) anios.add(String(g.fecha).slice(0, 4)); });
+            const listaAnios = [...anios].sort().reverse();
+            selAnio.innerHTML = '<option value="todos">Todos los años</option>' +
+                listaAnios.map(a => `<option value="${a}">${a}</option>`).join('');
+            selAnio.value = (anioPrevio === 'todos' || listaAnios.includes(anioPrevio)) ? anioPrevio : 'todos';
+            const anio = selAnio.value;
+            const mes = document.getElementById('gastos-filtro-mes').value;
+
+            const visibles = gastos.filter(g =>
+                (anio === 'todos' || String(g.fecha).slice(0, 4) === anio) &&
+                (mes === 'todos' || String(g.fecha).slice(5, 7) === mes));
+
             let total = 0;
-            tbody.innerHTML = gastos.map(g => {
+            tbody.innerHTML = visibles.map(g => {
                 total += parseInt(g.monto) || 0;
                 return `
                     <tr>
@@ -1555,7 +1684,7 @@
                         </td>
                     </tr>
                 `;
-            }).join('') || '<tr><td colspan="5" class="p-3 text-center text-slate-400">No hay gastos registrados</td></tr>';
+            }).join('') || '<tr><td colspan="5" class="p-3 text-center text-slate-400">No hay gastos en este período</td></tr>';
             document.getElementById('lbl-total-gastos').innerText = `${total.toLocaleString()} Gs.`;
         }
 
