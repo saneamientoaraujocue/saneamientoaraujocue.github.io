@@ -232,7 +232,7 @@
                                 <p>Medidor N°: <span id="doc-medidor" class="font-bold">--------</span></p>
                             </div>
                             <div class="text-right">
-                                <span class="font-bold text-sm">N° <span id="doc-num-factura">684</span></span>
+                                <span class="font-bold text-sm">N° <span id="doc-num-factura">1</span></span>
                             </div>
                         </div>
 
@@ -1011,9 +1011,10 @@
             calcularConsumo();
         }
 
-        // El N° de factura siguiente = el mayor número existente + 1 (la primera es la 684)
+        // El N° de factura siguiente = el mayor número existente + 1 (la primera es la 1).
+        // Es el mismo cálculo que hace el servidor, que es quien asigna el número definitivo.
         function actualizarNumeroFactura() {
-            const mayor = facturas.reduce((m, f) => Math.max(m, parseInt(f.num_factura, 10) || 0), 683);
+            const mayor = facturas.reduce((m, f) => /^\d+$/.test(String(f.num_factura)) ? Math.max(m, parseInt(f.num_factura, 10)) : m, 0);
             document.getElementById('doc-num-factura').innerText = mayor + 1;
         }
 
@@ -1358,7 +1359,7 @@
             const deuda = parseInt(document.getElementById('form-deuda-anterior').value) || 0;
 
             const nuevaFactura = {
-                numFactura: document.getElementById('doc-num-factura').innerText || "684",
+                numFactura: document.getElementById('doc-num-factura').innerText || "1",
                 usuarioId: userObj.id,
                 nombre: userObj.nombre,
                 ci: userObj.ci,
@@ -1392,7 +1393,10 @@
                 });
 
                 if (res.ok) {
-                    alert('Factura emitida y registrada exitosamente.');
+                    const creada = await res.json().catch(() => ({}));
+                    alert(creada.num_factura
+                        ? `Factura N° ${creada.num_factura} emitida y registrada exitosamente.`
+                        : 'Factura emitida y registrada exitosamente.');
                     // La próxima factura empieza otra vez como PENDIENTE
                     document.getElementById('form-estado-pago').value = 'PENDIENTE';
                     alCambiarEstado();

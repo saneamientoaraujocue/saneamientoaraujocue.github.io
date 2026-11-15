@@ -182,7 +182,11 @@ app.get('/api/facturas/buscar', async (req, res) => {
             WHERE REPLACE(LOWER(ci), ' ', '') = $1 
                OR REPLACE(LOWER(medidor), ' ', '') = $1 
                OR REPLACE(LOWER(num_factura), ' ', '') = $1
-            ORDER BY id DESC LIMIT 1
+            ORDER BY CASE
+                WHEN REPLACE(LOWER(ci), ' ', '') = $1 THEN 0
+                WHEN REPLACE(LOWER(medidor), ' ', '') = $1 THEN 1
+                ELSE 2 END, id DESC
+            LIMIT 1
         `, [q]);
 
         if (result.rows.length > 0) {
@@ -207,7 +211,11 @@ app.get('/api/facturas/historial', async (req, res) => {
             WHERE REPLACE(LOWER(ci), ' ', '') = $1
                OR REPLACE(LOWER(medidor), ' ', '') = $1
                OR REPLACE(LOWER(num_factura), ' ', '') = $1
-            ORDER BY id DESC LIMIT 1
+            ORDER BY CASE
+                WHEN REPLACE(LOWER(ci), ' ', '') = $1 THEN 0
+                WHEN REPLACE(LOWER(medidor), ' ', '') = $1 THEN 1
+                ELSE 2 END, id DESC
+            LIMIT 1
         `, [q]);
 
         if (base.rows.length === 0) {
@@ -225,11 +233,24 @@ app.get('/api/facturas/historial', async (req, res) => {
     }
 });
 
+// Siguiente número de factura: el mayor número existente + 1 (la primera factura es la 1).
+// Solo cuentan los valores que son un número entero; cualquier otro texto se ignora.
+async function siguienteNumeroFactura(client) {
+    const r = await client.query('SELECT num_factura FROM facturas');
+    let mayor = 0;
+    for (const fila of r.rows) {
+        if (/^\d{1,15}$/.test(String(fila.num_factura))) {
+            mayor = Math.max(mayor, parseInt(fila.num_factura, 10));
+        }
+    }
+    return String(mayor + 1);
+}
+
 app.post('/api/facturas', async (req, res) => {
     const f = req.body;
     
     // Mapeo flexible de variables (soporta camelCase del HTML y snake_case)
-    const num_factura = f.numFactura || f.num_factura;
+    // El número de factura lo asigna el servidor (correlativo, desde 1); el que mande la página se ignora
     const usuario_id = f.usuarioId || f.usuario_id;
     const nombre = f.nombre;
     const ci = f.ci;
@@ -261,6 +282,10 @@ app.post('/api/facturas', async (req, res) => {
     try {
         client = await pool.connect();
         await client.query('BEGIN');
+
+        // Número correlativo: el bloqueo evita que dos emisiones al mismo tiempo reciban el mismo número
+        await client.query('SELECT pg_advisory_xact_lock(4207)');
+        const num_factura = await siguienteNumeroFactura(client);
 
         // Deuda anterior automática: suma de las facturas de este usuario que siguen PENDIENTES
         let deuda_anterior = 0;
