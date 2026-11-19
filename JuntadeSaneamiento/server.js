@@ -2,9 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
+// Render está detrás de un proxy: así se obtiene la IP real de quien consulta
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Middlewares
@@ -32,6 +35,123 @@ app.get('/', (req, res) => {
 // ==========================================
 // 1. AUTENTICACIÓN / LOGIN DE ADMINISTRADOR
 // ==========================================
+// ------------------------------------------
+// Sesión con token (JWT) y roles: 'admin' y 'lector'
+// ------------------------------------------
+const DURACION_TOKEN = { admin: '12h', lector: '30d' };
+
+function secretoJWT() {
+    return process.env.JWT_SECRET || '';
+}
+if (secretoJWT().length < 32) {
+    console.error('⚠️  Falta la variable JWT_SECRET (mínimo 32 caracteres). Mientras no exista, nadie podrá iniciar sesión.');
+}
+
+function rolDe(u) {
+    return u && u.rol ? u.rol : 'admin';
+}
+
+function datosPublicosUsuario(u) {
+    return { id: u.id, usuario: u.usuario, nombre: u.nombre, rol: rolDe(u) };
+}
+
+function firmarToken(u) {
+    return jwt.sign(
+        { sub: u.id, usuario: u.usuario, rol: rolDe(u), tv: u.token_version || 0 },
+        secretoJWT(),
+        { algorithm: 'HS256', expiresIn: DURACION_TOKEN[rolDe(u)] || '12h' }
+    );
+}
+
+// Middleware: exige un token válido y que la cuenta siga activa
+async function autenticar(req, res, next) {
+    try {
+        if (secretoJWT().length < 32) {
+            return res.status(503).json({ error: 'El servidor no está configurado todavía (falta JWT_SECRET).' });
+        }
+        const m = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+        if (!m) {
+            return res.status(401).json({ error: 'Inicia sesión para continuar.' });
+        }
+
+        let payload;
+        try {
+            payload = jwt.verify(m[1], secretoJWT(), { algorithms: ['HS256'] });
+        } catch (e) {
+            return res.status(401).json({
+                error: e.name === 'TokenExpiredError' ? 'Tu sesión expiró. Inicia sesión de nuevo.' : 'Sesión inválida. Inicia sesión de nuevo.'
+            });
+        }
+
+        // Se consulta la cuenta en cada pedido: si se desactivó o cambió su contraseña, el token deja de servir
+        const r = await pool.query('SELECT * FROM administradores WHERE id = $1', [payload.sub]);
+        const u = r.rows[0];
+        if (!u || u.activo === false || (u.token_version || 0) !== (payload.tv || 0)) {
+            return res.status(401).json({ error: 'Sesión inválida. Inicia sesión de nuevo.' });
+        }
+
+        req.usuario = datosPublicosUsuario(u);
+        next();
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+function soloRol(...roles) {
+    return (req, res, next) => {
+        if (!roles.includes(req.usuario.rol)) {
+            return res.status(403).json({ error: 'No tienes permiso para esta acción.' });
+        }
+        next();
+    };
+}
+
+const adminOnly = [autenticar, soloRol('admin')];
+
+// ------------------------------------------
+// Límite de intentos fallidos de login (por usuario+IP y por IP)
+// ------------------------------------------
+const VENTANA_INTENTOS_MS = 15 * 60 * 1000;
+const MAX_INTENTOS_USUARIO = 8;
+const MAX_INTENTOS_IP = 30;
+const intentosFallidos = new Map();
+
+function intentosRecientes(clave) {
+    const ahora = Date.now();
+    const lista = (intentosFallidos.get(clave) || []).filter(t => ahora - t < VENTANA_INTENTOS_MS);
+    if (lista.length) intentosFallidos.set(clave, lista);
+    else intentosFallidos.delete(clave);
+    return lista;
+}
+
+function clavesLogin(req, usuario) {
+    return [
+        { clave: `${req.ip}|${String(usuario || '').toLowerCase().slice(0, 60)}`, max: MAX_INTENTOS_USUARIO },
+        { clave: `${req.ip}|*`, max: MAX_INTENTOS_IP }
+    ];
+}
+
+function segundosDeBloqueo(claves) {
+    let espera = 0;
+    for (const { clave, max } of claves) {
+        const lista = intentosRecientes(clave);
+        if (lista.length >= max) {
+            espera = Math.max(espera, Math.max(1, Math.ceil((VENTANA_INTENTOS_MS - (Date.now() - lista[0])) / 1000)));
+        }
+    }
+    return espera;
+}
+
+function registrarFallo(claves) {
+    for (const { clave } of claves) {
+        const lista = intentosRecientes(clave);
+        lista.push(Date.now());
+        intentosFallidos.set(clave, lista);
+    }
+}
+
+setInterval(() => { for (const k of [...intentosFallidos.keys()]) intentosRecientes(k); }, 10 * 60 * 1000).unref();
+
 // Compara la contraseña con el hash de bcrypt (o directo, si todavía está en texto plano)
 async function verificarPassword(admin, password) {
     if (!admin || !admin.password_hash || typeof password !== 'string') return false;
@@ -41,21 +161,44 @@ async function verificarPassword(admin, password) {
     return password === admin.password_hash;
 }
 
+// Para que tardar lo mismo cuando el usuario no existe (no revelar qué usuarios hay)
+const HASH_FALSO = bcrypt.hashSync('contraseña-falsa', 10);
+
 app.post('/api/admin/login', async (req, res) => {
-    const { usuario, password } = req.body;
+    if (secretoJWT().length < 32) {
+        return res.status(503).json({ error: 'El servidor no está configurado todavía (falta JWT_SECRET). Avisa al responsable del sistema.' });
+    }
+
+    const { usuario, password } = req.body || {};
+    const claves = clavesLogin(req, usuario);
+
+    const espera = segundosDeBloqueo(claves);
+    if (espera > 0) {
+        res.set('Retry-After', String(espera));
+        return res.status(429).json({ error: `Demasiados intentos fallidos. Espera ${Math.ceil(espera / 60)} minuto(s) e inténtalo de nuevo.` });
+    }
 
     try {
-        const result = await pool.query('SELECT * FROM administradores WHERE usuario = $1', [usuario]);
-        
-        if (result.rows.length === 0) {
-            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+        let admin;
+        if (typeof usuario === 'string') {
+            const result = await pool.query('SELECT * FROM administradores WHERE usuario = $1', [usuario]);
+            admin = result.rows[0];
         }
 
-        const admin = result.rows[0];
+        const valida = admin
+            ? await verificarPassword(admin, password)
+            : (await bcrypt.compare(String(password || ''), HASH_FALSO), false);
 
-        if (!(await verificarPassword(admin, password))) {
+        if (!valida) {
+            registrarFallo(claves);
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
+        if (admin.activo === false) {
+            return res.status(403).json({ error: 'Esta cuenta está desactivada. Consulta con el administrador.' });
+        }
+
+        // Acceso correcto: se limpian los intentos fallidos de este usuario
+        intentosFallidos.delete(claves[0].clave);
 
         // Si la contraseña seguía guardada en texto plano, se guarda ya como hash
         if (!admin.password_hash.startsWith('$2')) {
@@ -67,29 +210,27 @@ app.post('/api/admin/login', async (req, res) => {
             }
         }
 
-        res.json({
-            mensaje: 'Acceso concedido',
-            admin: {
-                id: admin.id,
-                usuario: admin.usuario,
-                nombre: admin.nombre
-            }
-        });
+        res.json({ mensaje: 'Acceso concedido', token: firmarToken(admin), admin: datosPublicosUsuario(admin) });
     } catch (err) {
         console.error('Error en /api/admin/login:', err);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
-// Cambiar usuario y/o contraseña del administrador (exige la contraseña actual)
-app.put('/api/admin/credenciales', async (req, res) => {
-    const { usuarioActual, passwordActual, nuevoUsuario, nuevaPassword } = req.body || {};
-    if (!usuarioActual || !passwordActual) {
-        return res.status(400).json({ error: 'Faltan los datos de acceso actuales' });
+// Quién soy (sirve para recuperar la sesión al recargar la página)
+app.get('/api/admin/yo', autenticar, (req, res) => {
+    res.json({ admin: req.usuario });
+});
+
+// Cambiar el usuario y/o la contraseña de la cuenta con la que se inició sesión (exige la contraseña actual)
+app.put('/api/admin/credenciales', autenticar, async (req, res) => {
+    const { passwordActual, nuevoUsuario, nuevaPassword } = req.body || {};
+    if (!passwordActual) {
+        return res.status(400).json({ error: 'Falta la contraseña actual' });
     }
 
     const usuarioNuevo = typeof nuevoUsuario === 'string' ? nuevoUsuario.trim() : '';
-    const hayUsuario = usuarioNuevo !== '' && usuarioNuevo !== usuarioActual;
+    const hayUsuario = usuarioNuevo !== '' && usuarioNuevo !== req.usuario.usuario;
     const hayPassword = typeof nuevaPassword === 'string' && nuevaPassword !== '';
 
     if (!hayUsuario && !hayPassword) {
@@ -103,20 +244,28 @@ app.put('/api/admin/credenciales', async (req, res) => {
     }
 
     try {
-        const result = await pool.query('SELECT * FROM administradores WHERE usuario = $1', [usuarioActual]);
+        const result = await pool.query('SELECT * FROM administradores WHERE id = $1', [req.usuario.id]);
         const admin = result.rows[0];
 
+        // 403 y no 401: el 401 se reserva para "tu sesión ya no sirve" y la página cierra la sesión al recibirlo
         if (!(await verificarPassword(admin, passwordActual))) {
-            return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+            return res.status(403).json({ error: 'La contraseña actual es incorrecta' });
         }
 
         const hash = hayPassword ? await bcrypt.hash(nuevaPassword, 10) : null;
+        // Al cambiar la contraseña se cierran las demás sesiones abiertas de esta cuenta
         const actualizado = await pool.query(
-            'UPDATE administradores SET usuario = COALESCE($1, usuario), password_hash = COALESCE($2, password_hash) WHERE id = $3 RETURNING id, usuario, nombre',
-            [hayUsuario ? usuarioNuevo : null, hash, admin.id]
+            `UPDATE administradores
+             SET usuario = COALESCE($1, usuario),
+                 password_hash = COALESCE($2, password_hash),
+                 token_version = COALESCE(token_version, 0) + $3
+             WHERE id = $4
+             RETURNING *`,
+            [hayUsuario ? usuarioNuevo : null, hash, hayPassword ? 1 : 0, admin.id]
         );
+        const u = actualizado.rows[0];
 
-        res.json({ mensaje: 'Datos de acceso actualizados', admin: actualizado.rows[0] });
+        res.json({ mensaje: 'Datos de acceso actualizados', admin: datosPublicosUsuario(u), token: firmarToken(u) });
     } catch (err) {
         if (err.code === '23505') {
             return res.status(409).json({ error: 'Ese nombre de usuario ya está en uso' });
@@ -126,10 +275,99 @@ app.put('/api/admin/credenciales', async (req, res) => {
     }
 });
 
+// ------------------------------------------
+// Cuentas de LECTORES (quienes salen a tomar las lecturas): las gestiona el administrador
+// ------------------------------------------
+app.get('/api/admin/lectores', ...adminOnly, async (req, res) => {
+    try {
+        const result = await pool.query(
+            "SELECT id, usuario, nombre, activo, creado FROM administradores WHERE rol = 'lector' ORDER BY id"
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/lectores', ...adminOnly, async (req, res) => {
+    const { usuario, nombre, password } = req.body || {};
+    const usuarioLimpio = typeof usuario === 'string' ? usuario.trim() : '';
+    const nombreLimpio = typeof nombre === 'string' ? nombre.trim() : '';
+
+    if (!/^[A-Za-z0-9._-]{3,30}$/.test(usuarioLimpio)) {
+        return res.status(400).json({ error: 'El usuario debe tener entre 3 y 30 caracteres (letras, números, punto, guion o guion bajo)' });
+    }
+    if (nombreLimpio.length < 2 || nombreLimpio.length > 60) {
+        return res.status(400).json({ error: 'El nombre debe tener entre 2 y 60 caracteres' });
+    }
+    if (typeof password !== 'string' || password.length < 8 || password.length > 72) {
+        return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 72 caracteres' });
+    }
+
+    try {
+        const hash = await bcrypt.hash(password, 10);
+        const result = await pool.query(
+            "INSERT INTO administradores (usuario, password_hash, nombre, rol) VALUES ($1, $2, $3, 'lector') RETURNING id, usuario, nombre, activo, creado",
+            [usuarioLimpio, hash, nombreLimpio]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(409).json({ error: 'Ese nombre de usuario ya está en uso' });
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Cambiar nombre, contraseña o activar/desactivar una cuenta de lector
+app.put('/api/admin/lectores/:id', ...adminOnly, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) {
+        return res.status(400).json({ error: 'Id inválido' });
+    }
+
+    const { nombre, password, activo } = req.body || {};
+    const nombreLimpio = typeof nombre === 'string' ? nombre.trim() : null;
+    if (nombreLimpio !== null && (nombreLimpio.length < 2 || nombreLimpio.length > 60)) {
+        return res.status(400).json({ error: 'El nombre debe tener entre 2 y 60 caracteres' });
+    }
+    if (password !== undefined && (typeof password !== 'string' || password.length < 8 || password.length > 72)) {
+        return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 72 caracteres' });
+    }
+    if (activo !== undefined && typeof activo !== 'boolean') {
+        return res.status(400).json({ error: 'El valor de "activo" no es válido' });
+    }
+    if (nombreLimpio === null && password === undefined && activo === undefined) {
+        return res.status(400).json({ error: 'No hay cambios para guardar' });
+    }
+
+    try {
+        const hash = password !== undefined ? await bcrypt.hash(password, 10) : null;
+        // Cambiar la contraseña o desactivar la cuenta cierra sus sesiones abiertas
+        const cierraSesiones = password !== undefined || activo === false;
+        const result = await pool.query(
+            `UPDATE administradores
+             SET nombre = COALESCE($1, nombre),
+                 password_hash = COALESCE($2, password_hash),
+                 activo = COALESCE($3, activo),
+                 token_version = COALESCE(token_version, 0) + $4
+             WHERE id = $5 AND rol = 'lector'
+             RETURNING id, usuario, nombre, activo, creado`,
+            [nombreLimpio, hash, activo === undefined ? null : activo, cierraSesiones ? 1 : 0, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Lector no encontrado' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ==========================================
 // 2. RUTAS DE USUARIOS / CONTRIBUYENTES
 // ==========================================
-app.get('/api/usuarios', async (req, res) => {
+app.get('/api/usuarios', ...adminOnly, async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM usuarios ORDER BY id DESC');
         res.json(result.rows);
@@ -138,7 +376,7 @@ app.get('/api/usuarios', async (req, res) => {
     }
 });
 
-app.post('/api/usuarios', async (req, res) => {
+app.post('/api/usuarios', ...adminOnly, async (req, res) => {
     const { nombre, ci, direccion, medidor, lecturaAnterior, lectura_anterior } = req.body;
     const lecturaInicial = lecturaAnterior !== undefined ? lecturaAnterior : (lectura_anterior || 0);
 
@@ -153,7 +391,103 @@ app.post('/api/usuarios', async (req, res) => {
     }
 });
 
-app.delete('/api/usuarios/:id', async (req, res) => {
+// Corregir los datos de un usuario (nombre, C.I., dirección, medidor y, si hace falta, la lectura anterior)
+app.put('/api/usuarios/:id', ...adminOnly, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) {
+        return res.status(400).json({ error: 'Id de usuario inválido' });
+    }
+
+    const b = req.body || {};
+    const limpiar = v => (typeof v === 'string' ? v.trim() : '');
+    const nombre = limpiar(b.nombre);
+    const ci = limpiar(b.ci);
+    const direccion = limpiar(b.direccion);
+    const medidor = limpiar(b.medidor);
+
+    if (nombre.length < 2 || nombre.length > 80) {
+        return res.status(400).json({ error: 'El nombre debe tener entre 2 y 80 caracteres' });
+    }
+    if (!ci || ci.length > 20) {
+        return res.status(400).json({ error: 'Escribe la C.I. (hasta 20 caracteres)' });
+    }
+    if (!medidor || medidor.length > 20) {
+        return res.status(400).json({ error: 'Escribe el número de medidor (hasta 20 caracteres)' });
+    }
+    if (direccion.length > 120) {
+        return res.status(400).json({ error: 'La dirección es demasiado larga (máximo 120 caracteres)' });
+    }
+
+    let lectura = null;
+    if (b.lecturaAnterior !== undefined && b.lecturaAnterior !== null && b.lecturaAnterior !== '') {
+        lectura = Number(b.lecturaAnterior);
+        if (!Number.isFinite(lectura) || lectura < 0) {
+            return res.status(400).json({ error: 'La lectura anterior debe ser un número mayor o igual a cero' });
+        }
+    }
+    const actualizarFacturas = b.actualizarFacturas === true;
+    const normalizar = s => String(s || '').replace(/\s+/g, '').toLowerCase();
+
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const actual = await client.query('SELECT * FROM usuarios WHERE id = $1 FOR UPDATE', [id]);
+        if (actual.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        const previo = actual.rows[0];
+
+        // La C.I. y el medidor no pueden repetirse con otro usuario (solo se controla si se cambian)
+        if (normalizar(ci) !== normalizar(previo.ci)) {
+            const dup = await client.query(
+                "SELECT nombre FROM usuarios WHERE id <> $1 AND REPLACE(LOWER(ci), ' ', '') = $2 LIMIT 1",
+                [id, normalizar(ci)]
+            );
+            if (dup.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ error: `Ya hay otro usuario con esa C.I. (${dup.rows[0].nombre})` });
+            }
+        }
+        if (normalizar(medidor) !== normalizar(previo.medidor)) {
+            const dup = await client.query(
+                "SELECT nombre FROM usuarios WHERE id <> $1 AND REPLACE(LOWER(medidor), ' ', '') = $2 LIMIT 1",
+                [id, normalizar(medidor)]
+            );
+            if (dup.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ error: `Ya hay otro usuario con ese medidor (${dup.rows[0].nombre})` });
+            }
+        }
+
+        const actualizado = await client.query(
+            'UPDATE usuarios SET nombre = $1, ci = $2, direccion = $3, medidor = $4, lectura_anterior = COALESCE($5, lectura_anterior) WHERE id = $6 RETURNING *',
+            [nombre, ci, direccion, medidor, lectura, id]
+        );
+
+        // Las facturas guardan una copia de estos datos: se corrigen también para que el cliente las encuentre
+        let facturasActualizadas = 0;
+        if (actualizarFacturas) {
+            const r = await client.query(
+                'UPDATE facturas SET nombre = $1, ci = $2, direccion = $3, medidor = $4 WHERE usuario_id = $5',
+                [nombre, ci, direccion, medidor, id]
+            );
+            facturasActualizadas = r.rowCount || 0;
+        }
+
+        await client.query('COMMIT');
+        res.json({ usuario: actualizado.rows[0], facturasActualizadas });
+    } catch (err) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        res.status(500).json({ error: err.message });
+    } finally {
+        if (client) client.release();
+    }
+});
+
+app.delete('/api/usuarios/:id', ...adminOnly, async (req, res) => {
     try {
         await pool.query('DELETE FROM usuarios WHERE id = $1', [req.params.id]);
         res.json({ mensaje: 'Usuario eliminado' });
@@ -165,7 +499,7 @@ app.delete('/api/usuarios/:id', async (req, res) => {
 // ==========================================
 // 3. RUTAS DE FACTURAS Y LECTURAS
 // ==========================================
-app.get('/api/facturas', async (req, res) => {
+app.get('/api/facturas', ...adminOnly, async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM facturas ORDER BY id DESC');
         res.json(result.rows);
@@ -246,7 +580,7 @@ async function siguienteNumeroFactura(client) {
     return String(mayor + 1);
 }
 
-app.post('/api/facturas', async (req, res) => {
+app.post('/api/facturas', ...adminOnly, async (req, res) => {
     const f = req.body;
     
     // Mapeo flexible de variables (soporta camelCase del HTML y snake_case)
@@ -410,7 +744,7 @@ function fechaValida(f) {
 }
 
 // Registrar un pago (parcial o total) de una factura
-app.post('/api/facturas/:id/pagos', async (req, res) => {
+app.post('/api/facturas/:id/pagos', ...adminOnly, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) {
         return res.status(400).json({ error: 'Id de factura inválido' });
@@ -437,7 +771,7 @@ app.post('/api/facturas/:id/pagos', async (req, res) => {
 });
 
 // Marcar una factura como pagada: registra el pago del saldo completo
-app.put('/api/facturas/:id/pagar', async (req, res) => {
+app.put('/api/facturas/:id/pagar', ...adminOnly, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) {
         return res.status(400).json({ error: 'Id de factura inválido' });
@@ -458,7 +792,7 @@ app.put('/api/facturas/:id/pagar', async (req, res) => {
 });
 
 // Lista de todos los pagos (la usan los reportes)
-app.get('/api/pagos', async (req, res) => {
+app.get('/api/pagos', ...adminOnly, async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM pagos ORDER BY fecha DESC, id DESC');
         res.json(result.rows);
@@ -468,7 +802,7 @@ app.get('/api/pagos', async (req, res) => {
 });
 
 // Anular un pago registrado por error
-app.delete('/api/pagos/:id', async (req, res) => {
+app.delete('/api/pagos/:id', ...adminOnly, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) {
         return res.status(400).json({ error: 'Id de pago inválido' });
@@ -521,7 +855,7 @@ app.delete('/api/pagos/:id', async (req, res) => {
 // ==========================================
 // 4. RUTAS DE GASTOS / EGRESOS
 // ==========================================
-app.get('/api/gastos', async (req, res) => {
+app.get('/api/gastos', ...adminOnly, async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM gastos ORDER BY fecha DESC');
         res.json(result.rows);
@@ -530,7 +864,7 @@ app.get('/api/gastos', async (req, res) => {
     }
 });
 
-app.post('/api/gastos', async (req, res) => {
+app.post('/api/gastos', ...adminOnly, async (req, res) => {
     const { categoria, monto, fecha, descripcion } = req.body;
 
     if (!categoria || !(Number(monto) > 0)) {
@@ -551,7 +885,7 @@ app.post('/api/gastos', async (req, res) => {
     }
 });
 
-app.delete('/api/gastos/:id', async (req, res) => {
+app.delete('/api/gastos/:id', ...adminOnly, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) {
         return res.status(400).json({ error: 'Id de gasto inválido' });

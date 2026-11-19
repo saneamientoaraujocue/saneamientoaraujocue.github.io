@@ -487,7 +487,9 @@
                 <div class="bg-white p-5 rounded-lg border-l-4 border-green-500 shadow-sm border">
                     <p class="text-xs font-bold text-slate-500 uppercase">Total Recaudado (Ingresos)</p>
                     <h4 id="rep-total-ingresos" class="text-2xl font-bold text-green-600 mt-1">0 Gs.</h4>
-                    <p class="text-[11px] text-slate-400 mt-1">Suma de facturas cobradas</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Pagos recibidos en el período (según la fecha de pago)</p>
+                    <p class="text-[11px] font-semibold text-slate-500 mt-2">Corresponde a los ciclos:</p>
+                    <div id="rep-ingresos-ciclos" class="mt-1 flex flex-wrap gap-1"></div>
                 </div>
                 <div class="bg-white p-5 rounded-lg border-l-4 border-red-500 shadow-sm border">
                     <p class="text-xs font-bold text-slate-500 uppercase">Total Gastos (Egresos)</p>
@@ -510,11 +512,53 @@
                             <tr class="text-xs uppercase text-slate-500 border-b">
                                 <th class="p-2 text-left">Mes</th>
                                 <th class="p-2 text-right">Recaudado (Gs.)</th>
+                                <th class="p-2 text-left">De qué ciclo es lo recaudado</th>
                                 <th class="p-2 text-right">Gastos (Gs.)</th>
                                 <th class="p-2 text-right">Balance (Gs.)</th>
                             </tr>
                         </thead>
                         <tbody id="rep-tabla-meses"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RECAUDACIÓN POR CICLO -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
+                <h4 class="text-sm font-bold text-slate-800">Recaudación por ciclo</h4>
+                <p class="text-xs text-slate-500 mb-3">Cuánto se facturó en cada ciclo (mes de consumo) y cuánto se cobró de eso, sin importar en qué mes entró el dinero. Se muestran los ciclos emitidos en el año elegido.</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-xs uppercase text-slate-500 border-b">
+                                <th class="p-2 text-left">Ciclo</th>
+                                <th class="p-2 text-right">Facturado (Gs.)</th>
+                                <th class="p-2 text-right">Cobrado (Gs.)</th>
+                                <th class="p-2 text-right">Por cobrar (Gs.)</th>
+                                <th class="p-2 text-right">% cobrado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-tabla-ciclos"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- DETALLE DE COBROS -->
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
+                <h4 class="text-sm font-bold text-slate-800">Detalle de cobros</h4>
+                <p class="text-xs text-slate-500 mb-3">Cada pago recibido en el período elegido: cuándo se cobró y a qué ciclo corresponde (con la fecha en que se emitió esa factura).</p>
+                <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-white">
+                            <tr class="text-xs uppercase text-slate-500 border-b">
+                                <th class="p-2 text-left">Fecha de pago</th>
+                                <th class="p-2 text-left">Usuario</th>
+                                <th class="p-2 text-left">Ciclo</th>
+                                <th class="p-2 text-left">Factura N°</th>
+                                <th class="p-2 text-left">Emitida</th>
+                                <th class="p-2 text-right">Monto (Gs.)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-tabla-cobros"></tbody>
                     </table>
                 </div>
             </div>
@@ -612,34 +656,59 @@
 
     <!-- MODAL CONFIGURACIÓN DEL ADMINISTRADOR -->
     <div id="modal-config" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div>
                 <h3 class="text-lg font-bold text-slate-800">⚙️ Configuración</h3>
-                <p class="text-xs text-slate-500">Cambiar el usuario y la contraseña de acceso</p>
+                <p class="text-xs text-slate-500">Mi acceso y cuentas de lectores</p>
             </div>
-            <p class="text-xs text-slate-600">Sesión iniciada como: <strong id="cfg-usuario-actual"></strong></p>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nuevo usuario</label>
-                    <input type="text" id="cfg-nuevo-usuario" maxlength="30" autocomplete="off" class="w-full p-2 border rounded text-sm">
-                    <p class="text-[11px] text-slate-400 mt-1">3 a 30 caracteres: letras, números, punto, guion o guion bajo.</p>
+
+            <div class="flex gap-2 border-b">
+                <button id="cfg-tab-acceso" onclick="cambiarTabConfig('acceso')" class="px-3 py-2 text-xs font-semibold border-b-2 border-blue-600 text-blue-700">Mi acceso</button>
+                <button id="cfg-tab-lectores" onclick="cambiarTabConfig('lectores')" class="px-3 py-2 text-xs font-semibold border-b-2 border-transparent text-slate-500">Lectores</button>
+            </div>
+
+            <!-- Mi acceso -->
+            <div id="cfg-panel-acceso" class="space-y-4">
+                <p class="text-xs text-slate-600">Sesión iniciada como: <strong id="cfg-usuario-actual"></strong></p>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nuevo usuario</label>
+                        <input type="text" id="cfg-nuevo-usuario" maxlength="30" autocomplete="off" class="w-full p-2 border rounded text-sm">
+                        <p class="text-[11px] text-slate-400 mt-1">3 a 30 caracteres: letras, números, punto, guion o guion bajo.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nueva contraseña (opcional)</label>
+                        <input type="password" id="cfg-nueva-pass" autocomplete="new-password" placeholder="Mínimo 8 caracteres" class="w-full p-2 border rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Repetir nueva contraseña</label>
+                        <input type="password" id="cfg-repetir-pass" autocomplete="new-password" class="w-full p-2 border rounded text-sm">
+                    </div>
+                    <div class="border-t pt-3">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Contraseña actual (para confirmar)</label>
+                        <input type="password" id="cfg-pass-actual" autocomplete="current-password" class="w-full p-2 border rounded text-sm">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nueva contraseña (opcional)</label>
-                    <input type="password" id="cfg-nueva-pass" autocomplete="new-password" placeholder="Mínimo 8 caracteres" class="w-full p-2 border rounded text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Repetir nueva contraseña</label>
-                    <input type="password" id="cfg-repetir-pass" autocomplete="new-password" class="w-full p-2 border rounded text-sm">
-                </div>
-                <div class="border-t pt-3">
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Contraseña actual (para confirmar)</label>
-                    <input type="password" id="cfg-pass-actual" autocomplete="current-password" class="w-full p-2 border rounded text-sm">
+                <div class="flex justify-end gap-2 pt-2">
+                    <button onclick="cerrarModalConfig()" class="px-4 py-2 text-slate-600 text-xs font-semibold">Cancelar</button>
+                    <button id="btn-guardar-config" onclick="guardarConfiguracionAdmin()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold disabled:opacity-50">Guardar cambios</button>
                 </div>
             </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button onclick="cerrarModalConfig()" class="px-4 py-2 text-slate-600 text-xs font-semibold">Cancelar</button>
-                <button id="btn-guardar-config" onclick="guardarConfiguracionAdmin()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold disabled:opacity-50">Guardar cambios</button>
+
+            <!-- Lectores -->
+            <div id="cfg-panel-lectores" class="hidden space-y-4">
+                <p class="text-xs text-slate-500">Son las personas que salen a tomar las lecturas de los medidores. Cada una tiene su propio usuario y contraseña, y solo puede cargar lecturas.</p>
+                <div id="cfg-lista-lectores" class="border rounded divide-y text-sm"></div>
+                <div class="bg-slate-50 border rounded p-3 space-y-2">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase">Nuevo lector</h4>
+                    <input type="text" id="lec-nombre" maxlength="60" placeholder="Nombre (ej: Don José)" autocomplete="off" class="w-full p-2 border rounded text-sm">
+                    <input type="text" id="lec-usuario" maxlength="30" placeholder="Usuario (ej: don.jose)" autocomplete="off" class="w-full p-2 border rounded text-sm">
+                    <input type="password" id="lec-pass" placeholder="Contraseña (mínimo 8 caracteres)" autocomplete="new-password" class="w-full p-2 border rounded text-sm">
+                    <button id="btn-crear-lector" onclick="crearLector()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold disabled:opacity-50">Crear lector</button>
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="cerrarModalConfig()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold">Cerrar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -679,9 +748,83 @@
         </div>
     </div>
 
+    <!-- MODAL EDITAR USUARIO -->
+    <div id="modal-editar-usuario" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-slate-800">Editar usuario</h3>
+            <form id="form-editar-usuario" onsubmit="guardarEdicionUsuario(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nombre Completo</label>
+                    <input type="text" id="eu-nombre" required maxlength="80" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">C.I.N°</label>
+                    <input type="text" id="eu-ci" required maxlength="20" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Dirección</label>
+                    <input type="text" id="eu-direccion" maxlength="120" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">N° Medidor</label>
+                        <input type="text" id="eu-medidor" required maxlength="20" class="w-full p-2 border rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Lectura anterior</label>
+                        <input type="number" id="eu-lectura" min="0" required class="w-full p-2 border rounded text-sm">
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-500">La lectura anterior es la base de la próxima factura. Cámbiala solo si quedó mal cargada.</p>
+                <label class="flex items-start gap-2 text-xs text-slate-700 bg-slate-50 border rounded p-3">
+                    <input type="checkbox" id="eu-actualizar-facturas" checked class="mt-0.5">
+                    <span>Corregir también estos datos en sus <strong>facturas ya emitidas</strong> (recomendado si cambias la C.I. o el medidor, para que el cliente las encuentre con el dato nuevo).</span>
+                </label>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" onclick="cerrarModalEditarUsuario()" class="px-4 py-2 text-slate-600 text-xs font-semibold">Cancelar</button>
+                    <button type="submit" id="btn-guardar-edicion" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold disabled:opacity-50">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- JAVASCRIPT LÓGICA CONECTADA A RENDER & SUPABASE -->
     <script>
         const API_URL = "https://saneamientoaraujocue-github-io.onrender.com/api";
+
+        // ----- Sesión con token: se guarda solo mientras la pestaña esté abierta -----
+        const TOKEN_KEY = 'junta_token';
+        function tokenActual() {
+            try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
+        }
+        function guardarToken(token) {
+            try {
+                if (token) sessionStorage.setItem(TOKEN_KEY, token);
+                else sessionStorage.removeItem(TOKEN_KEY);
+            } catch (e) { /* sin almacenamiento disponible */ }
+        }
+
+        // Llamada al servidor con el token. Si el servidor dice que la sesión ya no sirve, se cierra la sesión.
+        async function api(ruta, opciones = {}) {
+            const headers = Object.assign({}, opciones.headers);
+            const token = tokenActual();
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            const res = await fetch(`${API_URL}${ruta}`, Object.assign({}, opciones, { headers }));
+            if (res.status === 401 && token) {
+                if (esAdmin) sesionExpirada();
+                else guardarToken('');
+            }
+            return res;
+        }
+
+        let avisandoSesion = false;
+        function sesionExpirada() {
+            if (avisandoSesion) return;
+            avisandoSesion = true;
+            cerrarSesionAdmin();
+            alert('Tu sesión expiró o ya no es válida. Inicia sesión de nuevo.');
+            avisandoSesion = false;
+        }
 
         let esAdmin = false;
         let adminActual = null;
@@ -695,15 +838,13 @@
             document.getElementById('gasto-fecha').value = hoyLocal();
             alCambiarEmision();
             actualizarHintGasto();
-            cargarUsuariosDesdeBD();
-            cargarGastosDesdeBD();
-            cargarFacturasDesdeBD();
+            restaurarSesion();
         };
 
         // 1. CARGA DE DATOS EN VIVO
         async function cargarUsuariosDesdeBD() {
             try {
-                const res = await fetch(`${API_URL}/usuarios`);
+                const res = await api(`/usuarios`);
                 if (res.ok) {
                     usuarios = await res.json();
                     renderUsuarios();
@@ -861,7 +1002,7 @@
             const boton = document.getElementById('btn-guardar-pago');
             boton.disabled = true;
             try {
-                const res = await fetch(`${API_URL}/facturas/${f.id}/pagos`, {
+                const res = await api(`/facturas/${f.id}/pagos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ monto, fechaPago: fecha, nota })
@@ -921,7 +1062,7 @@
         async function anularPago(idPago, idFactura) {
             if (!confirm('¿Anular este pago?\n\nLa factura volverá a tener ese monto como saldo pendiente.')) return;
             try {
-                const res = await fetch(`${API_URL}/pagos/${idPago}`, { method: 'DELETE' });
+                const res = await api(`/pagos/${idPago}`, { method: 'DELETE' });
                 const datos = await res.json().catch(() => ({}));
                 if (res.ok) {
                     await cargarFacturasDesdeBD();
@@ -935,8 +1076,116 @@
         }
 
         // ----- Configuración del administrador -----
+        // ----- Pestañas de Configuración y cuentas de lectores -----
+        let lectores = [];
+
+        function cambiarTabConfig(tab) {
+            const acceso = tab === 'acceso';
+            document.getElementById('cfg-panel-acceso').classList.toggle('hidden', !acceso);
+            document.getElementById('cfg-panel-lectores').classList.toggle('hidden', acceso);
+            document.getElementById('cfg-tab-acceso').className = 'px-3 py-2 text-xs font-semibold border-b-2 ' + (acceso ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500');
+            document.getElementById('cfg-tab-lectores').className = 'px-3 py-2 text-xs font-semibold border-b-2 ' + (acceso ? 'border-transparent text-slate-500' : 'border-blue-600 text-blue-700');
+            if (!acceso) cargarLectores();
+        }
+
+        async function cargarLectores() {
+            const cont = document.getElementById('cfg-lista-lectores');
+            cont.innerHTML = '<p class="p-3 text-xs text-slate-500">Cargando...</p>';
+            try {
+                const res = await api('/admin/lectores');
+                const datos = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    lectores = datos;
+                    renderLectores();
+                } else {
+                    cont.innerHTML = `<p class="p-3 text-xs text-red-600">No se pudo cargar la lista. ${esc(datos.error || '')}</p>`;
+                }
+            } catch (error) {
+                cont.innerHTML = '<p class="p-3 text-xs text-red-600">Error al conectar con el servidor.</p>';
+            }
+        }
+
+        function renderLectores() {
+            document.getElementById('cfg-lista-lectores').innerHTML = lectores.map(l => `
+                <div class="flex flex-wrap items-center justify-between gap-2 p-3">
+                    <div>
+                        <div class="font-semibold text-slate-800">${esc(l.nombre)}
+                            <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-bold ${l.activo ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}">${l.activo ? 'ACTIVO' : 'DESACTIVADO'}</span>
+                        </div>
+                        <div class="text-xs text-slate-500">Usuario: ${esc(l.usuario)}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="cambiarPasswordLector(${Number(l.id)})" class="text-[11px] border border-slate-300 bg-white hover:bg-slate-50 rounded px-2 py-1 font-semibold">Cambiar contraseña</button>
+                        <button onclick="alternarLector(${Number(l.id)})" class="text-[11px] border rounded px-2 py-1 font-semibold ${l.activo ? 'border-red-200 bg-red-50 text-red-600' : 'border-green-200 bg-green-50 text-green-700'}">${l.activo ? 'Desactivar' : 'Activar'}</button>
+                    </div>
+                </div>`).join('') || '<p class="p-3 text-xs text-slate-500">Todavía no hay lectores. Crea el primero abajo.</p>';
+        }
+
+        async function crearLector() {
+            const nombre = document.getElementById('lec-nombre').value.trim();
+            const usuario = document.getElementById('lec-usuario').value.trim();
+            const password = document.getElementById('lec-pass').value;
+            if (nombre.length < 2) return alert('Escribe el nombre del lector.');
+            if (!/^[A-Za-z0-9._-]{3,30}$/.test(usuario)) return alert('El usuario debe tener entre 3 y 30 caracteres (letras, números, punto, guion o guion bajo).');
+            if (password.length < 8) return alert('La contraseña debe tener al menos 8 caracteres.');
+
+            const boton = document.getElementById('btn-crear-lector');
+            boton.disabled = true;
+            try {
+                const res = await api('/admin/lectores', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, usuario, password })
+                });
+                const datos = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    ['lec-nombre', 'lec-usuario', 'lec-pass'].forEach(id => { document.getElementById(id).value = ''; });
+                    alert(`Lector creado. Entrégale su usuario (${usuario}) y su contraseña.`);
+                    await cargarLectores();
+                } else {
+                    alert(datos.error || 'No se pudo crear el lector.');
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+            }
+            boton.disabled = false;
+        }
+
+        async function actualizarLector(id, cambios) {
+            const res = await api(`/admin/lectores/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cambios)
+            });
+            const datos = await res.json().catch(() => ({}));
+            if (!res.ok) { alert(datos.error || 'No se pudo guardar el cambio.'); return false; }
+            await cargarLectores();
+            return true;
+        }
+
+        async function cambiarPasswordLector(id) {
+            const l = lectores.find(x => Number(x.id) === Number(id));
+            if (!l) return;
+            const nueva = prompt(`Nueva contraseña para ${l.nombre} (mínimo 8 caracteres):
+
+Sus sesiones abiertas se cerrarán.`);
+            if (nueva === null) return;
+            if (nueva.length < 8) return alert('La contraseña debe tener al menos 8 caracteres.');
+            if (await actualizarLector(id, { password: nueva })) alert('Contraseña cambiada. Avísale al lector.');
+        }
+
+        async function alternarLector(id) {
+            const l = lectores.find(x => Number(x.id) === Number(id));
+            if (!l) return;
+            if (l.activo && !confirm(`¿Desactivar a ${l.nombre}?
+
+Dejará de poder entrar y se cerrarán sus sesiones abiertas.`)) return;
+            await actualizarLector(id, { activo: !l.activo });
+        }
+
         function abrirModalConfig() {
             if (!esAdmin || !adminActual) return;
+            cambiarTabConfig('acceso');
             document.getElementById('cfg-usuario-actual').innerText = adminActual.usuario;
             document.getElementById('cfg-nuevo-usuario').value = adminActual.usuario;
             document.getElementById('cfg-nueva-pass').value = '';
@@ -948,6 +1197,7 @@
 
         function cerrarModalConfig() {
             document.getElementById('modal-config').classList.add('hidden');
+            ['lec-nombre', 'lec-usuario', 'lec-pass'].forEach(id => { document.getElementById(id).value = ''; });
             ['cfg-nueva-pass', 'cfg-repetir-pass', 'cfg-pass-actual'].forEach(id => { document.getElementById(id).value = ''; });
         }
 
@@ -972,7 +1222,7 @@
             const boton = document.getElementById('btn-guardar-config');
             boton.disabled = true;
             try {
-                const res = await fetch(`${API_URL}/admin/credenciales`, {
+                const res = await api(`/admin/credenciales`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -985,6 +1235,7 @@
                 const datos = await res.json().catch(() => ({}));
                 if (res.ok) {
                     adminActual = datos.admin || adminActual;
+                    if (datos.token) guardarToken(datos.token);
                     cerrarModalConfig();
                     alert('Datos de acceso actualizados. Usa los nuevos la próxima vez que inicies sesión.');
                 } else {
@@ -1021,8 +1272,8 @@
         async function cargarFacturasDesdeBD() {
             try {
                 const [resFacturas, resPagos] = await Promise.all([
-                    fetch(`${API_URL}/facturas`),
-                    fetch(`${API_URL}/pagos`)
+                    api(`/facturas`),
+                    api(`/pagos`)
                 ]);
                 if (resFacturas.ok) facturas = await resFacturas.json();
                 if (resPagos.ok) pagos = await resPagos.json();
@@ -1037,7 +1288,7 @@
 
         async function cargarGastosDesdeBD() {
             try {
-                const res = await fetch(`${API_URL}/gastos`);
+                const res = await api(`/gastos`);
                 if (res.ok) {
                     gastos = await res.json();
                     renderGastos();
@@ -1049,6 +1300,24 @@
         }
 
         // 2. AUTENTICACIÓN ADMIN
+        // Muestra el panel de administración y carga los datos (solo después de tener sesión)
+        function iniciarSesionAdmin(admin) {
+            adminActual = admin;
+            esAdmin = true;
+            document.getElementById('btn-config').classList.remove('hidden');
+            document.querySelectorAll('.tab-admin').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('btn-login-toggle').classList.add('hidden');
+            document.getElementById('btn-logout').classList.remove('hidden');
+            document.getElementById('status-admin-badge').classList.remove('hidden');
+            cargarDatosAdmin();
+        }
+
+        function cargarDatosAdmin() {
+            cargarUsuariosDesdeBD();
+            cargarGastosDesdeBD();
+            cargarFacturasDesdeBD();
+        }
+
         async function autenticarAdmin() {
             const user = document.getElementById('login-user').value;
             const pass = document.getElementById('login-pass').value;
@@ -1059,34 +1328,59 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ usuario: user, password: pass })
                 });
+                const datos = await res.json().catch(() => ({}));
 
                 if (res.ok) {
-                    const datos = await res.json().catch(() => ({}));
-                    adminActual = datos.admin || { usuario: user };
-                    esAdmin = true;
+                    if (!datos.token) {
+                        return alert('El servidor todavía se está actualizando. Espera un minuto e inténtalo de nuevo.');
+                    }
+                    if (datos.admin && datos.admin.rol && datos.admin.rol !== 'admin') {
+                        return alert('Esta cuenta es de lector y no puede entrar al panel de administración.');
+                    }
+                    guardarToken(datos.token);
+                    document.getElementById('login-pass').value = '';
                     cerrarModalLogin();
-                    document.getElementById('btn-config').classList.remove('hidden');
-                    document.querySelectorAll('.tab-admin').forEach(el => el.classList.remove('hidden'));
-                    document.getElementById('btn-login-toggle').classList.add('hidden');
-                    document.getElementById('btn-logout').classList.remove('hidden');
-                    document.getElementById('status-admin-badge').classList.remove('hidden');
+                    iniciarSesionAdmin(datos.admin || { usuario: user, rol: 'admin' });
                     cambiarPestana('lecturas');
                 } else {
-                    alert('Usuario o contraseña incorrectos.');
+                    alert(datos.error || 'Usuario o contraseña incorrectos.');
                 }
             } catch (error) {
                 alert('Error de conexión con el servidor.');
             }
         }
 
+        // Al recargar la página: si todavía hay un token válido, se recupera la sesión
+        async function restaurarSesion() {
+            if (!tokenActual()) return;
+            try {
+                const res = await api('/admin/yo');
+                if (!res.ok) return;
+                const datos = await res.json().catch(() => ({}));
+                if (datos.admin && datos.admin.rol === 'admin') {
+                    iniciarSesionAdmin(datos.admin);
+                    cambiarPestana('lecturas');
+                } else {
+                    guardarToken('');
+                }
+            } catch (error) {
+                // sin conexión: se queda en la vista pública
+            }
+        }
+
         function cerrarSesionAdmin() {
             esAdmin = false;
             adminActual = null;
+            guardarToken('');
+            // Se vacían los datos de administración que estaban en pantalla
+            usuarios = []; facturas = []; pagos = []; gastos = [];
+            renderUsuarios(); renderSelectUsuarios(); renderFacturasEmitidas(); renderGastos(); refrescarReporte();
             document.getElementById('btn-config').classList.add('hidden');
             document.querySelectorAll('.tab-admin').forEach(el => el.classList.add('hidden'));
             document.getElementById('btn-login-toggle').classList.remove('hidden');
             document.getElementById('btn-logout').classList.add('hidden');
             document.getElementById('status-admin-badge').classList.add('hidden');
+            cerrarModalConfig();
             cambiarPestana('cliente');
         }
 
@@ -1312,7 +1606,7 @@
             };
 
             try {
-                const res = await fetch(`${API_URL}/usuarios`, {
+                const res = await api(`/usuarios`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(nuevo)
@@ -1386,7 +1680,7 @@
             }
 
             try {
-                const res = await fetch(`${API_URL}/facturas`, {
+                const res = await api(`/facturas`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(nuevaFactura)
@@ -1423,7 +1717,7 @@
             if (!/^\d{4}-\d{2}-\d{2}$/.test(nuevoGasto.fecha)) return alert('Elige la fecha del gasto.');
 
             try {
-                const res = await fetch(`${API_URL}/gastos`, {
+                const res = await api(`/gastos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(nuevoGasto)
@@ -1449,7 +1743,7 @@
         async function eliminarUsuario(id) {
             if (confirm('¿Está seguro de eliminar este usuario?\n\nSus facturas y pagos ya registrados NO se borran: se conservan y siguen contando en los reportes.')) {
                 try {
-                    const res = await fetch(`${API_URL}/usuarios/${id}`, { method: 'DELETE' });
+                    const res = await api(`/usuarios/${id}`, { method: 'DELETE' });
                     if (res.ok) {
                         cargarUsuariosDesdeBD();
                         cargarFacturasDesdeBD();
@@ -1601,18 +1895,85 @@
             const tbody = document.getElementById('tabla-usuarios-body');
             tbody.innerHTML = usuarios.map(u => `
                 <tr class="hover:bg-slate-50">
-                    <td class="p-3 font-bold">${u.medidor}</td>
-                    <td class="p-3">${u.ci}</td>
-                    <td class="p-3 font-semibold">${u.nombre}</td>
-                    <td class="p-3">${u.direccion}</td>
+                    <td class="p-3 font-bold">${esc(u.medidor)}</td>
+                    <td class="p-3">${esc(u.ci)}</td>
+                    <td class="p-3 font-semibold">${esc(u.nombre)}</td>
+                    <td class="p-3">${esc(u.direccion)}</td>
                     <td class="p-3">${parseInt(u.lectura_anterior || u.lecturaAnterior || 0).toLocaleString()} L</td>
-                    <td class="p-3 text-center">
-                        <button onclick="eliminarUsuario(${u.id})" class="bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded text-xs font-bold">
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <button onclick="abrirModalEditarUsuario(${Number(u.id)})" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded text-xs font-bold mr-1">
+                            Editar
+                        </button>
+                        <button onclick="eliminarUsuario(${Number(u.id)})" class="bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded text-xs font-bold">
                             Eliminar
                         </button>
                     </td>
                 </tr>
             `).join('');
+        }
+
+        // ----- Editar usuario -----
+        let usuarioEditandoId = null;
+
+        function abrirModalEditarUsuario(id) {
+            const u = usuarios.find(x => Number(x.id) === Number(id));
+            if (!u) return;
+            usuarioEditandoId = u.id;
+            document.getElementById('eu-nombre').value = u.nombre || '';
+            document.getElementById('eu-ci').value = u.ci || '';
+            document.getElementById('eu-direccion').value = u.direccion || '';
+            document.getElementById('eu-medidor').value = u.medidor || '';
+            document.getElementById('eu-lectura').value = Number(u.lectura_anterior || 0);
+            document.getElementById('eu-actualizar-facturas').checked = true;
+            document.getElementById('btn-guardar-edicion').disabled = false;
+            document.getElementById('modal-editar-usuario').classList.remove('hidden');
+        }
+
+        function cerrarModalEditarUsuario() {
+            document.getElementById('modal-editar-usuario').classList.add('hidden');
+            usuarioEditandoId = null;
+        }
+
+        async function guardarEdicionUsuario(e) {
+            e.preventDefault();
+            const u = usuarios.find(x => Number(x.id) === Number(usuarioEditandoId));
+            if (!u) return;
+
+            const lecturaNueva = Number(document.getElementById('eu-lectura').value);
+            const lecturaVieja = Number(u.lectura_anterior || 0);
+            if (!Number.isFinite(lecturaNueva) || lecturaNueva < 0) return alert('La lectura anterior debe ser un número mayor o igual a cero.');
+            if (lecturaNueva !== lecturaVieja &&
+                !confirm(`Vas a cambiar la lectura anterior de ${lecturaVieja.toLocaleString()} a ${lecturaNueva.toLocaleString()}.\n\nEsto cambia el consumo que se calculará en la próxima factura de este usuario.\n\n¿Continuar?`)) return;
+
+            const boton = document.getElementById('btn-guardar-edicion');
+            boton.disabled = true;
+            try {
+                const res = await api(`/usuarios/${u.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nombre: document.getElementById('eu-nombre').value,
+                        ci: document.getElementById('eu-ci').value,
+                        direccion: document.getElementById('eu-direccion').value,
+                        medidor: document.getElementById('eu-medidor').value,
+                        lecturaAnterior: lecturaNueva,
+                        actualizarFacturas: document.getElementById('eu-actualizar-facturas').checked
+                    })
+                });
+                const datos = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    cerrarModalEditarUsuario();
+                    alert('Datos del usuario actualizados.' + (datos.facturasActualizadas > 0 ? `\n\nTambién se corrigieron ${datos.facturasActualizadas} factura(s) ya emitidas.` : ''));
+                    cargarUsuariosDesdeBD();
+                    cargarFacturasDesdeBD();
+                } else {
+                    alert(datos.error || 'No se pudieron guardar los cambios.');
+                    boton.disabled = false;
+                }
+            } catch (error) {
+                alert('Error al conectar con el servidor.');
+                boton.disabled = false;
+            }
         }
 
         // Quita tildes y mayúsculas para que "Jose" encuentre "José"
@@ -1697,7 +2058,7 @@
             const detalle = g ? `${g.categoria} - ${(parseInt(g.monto) || 0).toLocaleString()} Gs. (${g.fecha})` : 'este gasto';
             if (!confirm(`¿Eliminar el gasto "${detalle}"?\n\nEsta acción no se puede deshacer.`)) return;
             try {
-                const res = await fetch(`${API_URL}/gastos/${id}`, { method: 'DELETE' });
+                const res = await api(`/gastos/${id}`, { method: 'DELETE' });
                 if (res.ok) {
                     cargarGastosDesdeBD();
                 } else {
@@ -1728,12 +2089,122 @@
             generarReporte();
         }
 
+        // ----- Reparto de cada pago entre los ciclos (meses de consumo) que está cubriendo -----
+        // Una factura trae su propio cargo más la deuda de facturas anteriores (trasladadas).
+        // Cada pago cubre primero lo más viejo. Así, una factura de enero cobrada en febrero
+        // cuenta como dinero de febrero (cuándo entró) pero figura como del ciclo de enero.
+        function calcularAsignaciones() {
+            const num = v => Number(v) || 0;
+            const ETIQUETA_SIN_DETALLE = 'Deuda de ciclos anteriores';
+            const hijos = new Map();
+            facturas.forEach(f => {
+                if (f.trasladada_a !== null && f.trasladada_a !== undefined) {
+                    const k = Number(f.trasladada_a);
+                    if (!hijos.has(k)) hijos.set(k, []);
+                    hijos.get(k).push(f);
+                }
+            });
+            const porEmision = (a, b) => String(a.emision).localeCompare(String(b.emision)) || Number(a.id) - Number(b.id);
+            const cicloDe = f => String(f.ciclo || 'Sin ciclo').trim();
+            const propio = f => Math.max(0, num(f.monto_total) - num(f.deuda_anterior));
+
+            // Lo que queda por cobrar de una lista de partidas, aplicando "pagado" desde la más vieja
+            const descontar = (lista, pagado) => {
+                let resto = pagado;
+                const salida = [];
+                lista.forEach(p => {
+                    const quita = Math.min(resto, p.monto);
+                    resto -= quita;
+                    if (p.monto - quita > 0) salida.push({ ciclo: p.ciclo, monto: p.monto - quita, origen: p.origen });
+                });
+                return salida;
+            };
+
+            const memo = new Map();
+            function partidas(f) {
+                const id = Number(f.id);
+                if (memo.has(id)) return memo.get(id);
+                memo.set(id, []); // corta cualquier vuelta rara en los datos
+                let lista = [];
+                (hijos.get(id) || []).slice().sort(porEmision).forEach(h => {
+                    lista = lista.concat(descontar(partidas(h), num(h.monto_pagado)));
+                });
+                // Si lo arrastrado no coincide con la deuda anterior guardada, se ajusta la diferencia
+                const deuda = num(f.deuda_anterior);
+                const arrastrado = lista.reduce((acc, p) => acc + p.monto, 0);
+                if (arrastrado < deuda) {
+                    lista.unshift({ ciclo: ETIQUETA_SIN_DETALLE, monto: deuda - arrastrado, origen: null });
+                } else if (arrastrado > deuda) {
+                    let exceso = arrastrado - deuda;
+                    for (let i = lista.length - 1; i >= 0 && exceso > 0; i--) {
+                        const q = Math.min(exceso, lista[i].monto);
+                        lista[i].monto -= q;
+                        exceso -= q;
+                    }
+                }
+                lista.push({ ciclo: cicloDe(f), monto: propio(f), origen: f });
+                const limpia = lista.filter(p => p.monto > 0);
+                memo.set(id, limpia);
+                return limpia;
+            }
+
+            const ciclos = new Map();
+            const ficha = (ciclo, emision) => {
+                if (!ciclos.has(ciclo)) ciclos.set(ciclo, { ciclo, orden: emision ? String(emision).slice(0, 10) : '0000', facturado: 0, cobrado: 0 });
+                const c = ciclos.get(ciclo);
+                if (emision && String(emision).slice(0, 10) < c.orden && c.orden !== '0000') c.orden = String(emision).slice(0, 10);
+                if (emision && c.orden === '0000' && ciclo !== ETIQUETA_SIN_DETALLE) c.orden = String(emision).slice(0, 10);
+                return c;
+            };
+            facturas.forEach(f => { ficha(cicloDe(f), f.emision).facturado += propio(f); });
+
+            const pagosPorFactura = new Map();
+            pagos.forEach(p => {
+                const k = Number(p.factura_id);
+                if (!pagosPorFactura.has(k)) pagosPorFactura.set(k, []);
+                pagosPorFactura.get(k).push(p);
+            });
+
+            const asignaciones = [];
+            facturas.forEach(f => {
+                const lista = partidas(f).map(p => Object.assign({}, p));
+                const susPagos = (pagosPorFactura.get(Number(f.id)) || [])
+                    .slice().sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || Number(a.id) - Number(b.id));
+                let i = 0;
+                susPagos.forEach(p => {
+                    let resto = num(p.monto);
+                    while (resto > 0 && i < lista.length) {
+                        const toma = Math.min(resto, lista[i].monto);
+                        asignaciones.push({ pago: p, factura: f, ciclo: lista[i].ciclo, monto: toma, origen: lista[i].origen });
+                        ficha(lista[i].ciclo).cobrado += toma;
+                        lista[i].monto -= toma;
+                        resto -= toma;
+                        if (lista[i].monto <= 0) i++;
+                    }
+                    if (resto > 0) { // sobrante (datos inconsistentes): va al ciclo de la propia factura
+                        asignaciones.push({ pago: p, factura: f, ciclo: cicloDe(f), monto: resto, origen: f });
+                        ficha(cicloDe(f), f.emision).cobrado += resto;
+                    }
+                });
+            });
+            return { asignaciones, ciclos };
+        }
+
         function generarReporte() {
             const anio = document.getElementById('rep-anio').value;
             const mes = document.getElementById('rep-mes').value;
             const num = v => Number(v) || 0;
             const enAnio = fecha => !!fecha && (anio === 'todos' || String(fecha).slice(0, 4) === anio);
             const enPeriodo = fecha => enAnio(fecha) && (mes === 'todos' || String(fecha).slice(5, 7) === mes);
+
+            const { asignaciones, ciclos } = calcularAsignaciones();
+            const ordenCiclo = c => (ciclos.get(c) ? ciclos.get(c).orden : '0000');
+            const porCiclo = lista => {
+                const m = {};
+                lista.forEach(a => { m[a.ciclo] = (m[a.ciclo] || 0) + a.monto; });
+                return Object.keys(m).sort((x, y) => ordenCiclo(x).localeCompare(ordenCiclo(y)) || x.localeCompare(y))
+                    .map(c => ({ ciclo: c, monto: m[c] }));
+            };
 
             // Lo recaudado es la suma de los pagos recibidos (totales o parciales), según su fecha
             const totalIngresos = pagos.filter(p => enPeriodo(p.fecha)).reduce((acc, p) => acc + num(p.monto), 0);
@@ -1743,6 +2214,12 @@
             document.getElementById('rep-total-ingresos').innerText = `${totalIngresos.toLocaleString()} Gs.`;
             document.getElementById('rep-total-egresos').innerText = `${totalEgresos.toLocaleString()} Gs.`;
             document.getElementById('rep-balance-neto').innerText = `${balanceNeto.toLocaleString()} Gs.`;
+
+            // De qué ciclo es el dinero recaudado en el período
+            const delPeriodo = asignaciones.filter(a => enPeriodo(a.pago.fecha));
+            document.getElementById('rep-ingresos-ciclos').innerHTML = porCiclo(delPeriodo).map(x =>
+                `<span class="px-2 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 text-[11px]">${esc(x.ciclo)}: ${x.monto.toLocaleString()}</span>`
+            ).join('') || '<span class="text-[11px] text-slate-400">Sin cobros en este período</span>';
 
             // Resumen mes a mes del año elegido
             const meses = {};
@@ -1759,15 +2236,49 @@
             const filas = Object.keys(meses).sort().map(k => {
                 const [a, m] = k.split('-');
                 const { ing, egr } = meses[k];
-                return `<tr class="border-b border-slate-100">
+                const deCiclos = porCiclo(asignaciones.filter(x => String(x.pago.fecha).slice(0, 7) === k))
+                    .map(x => `<div class="text-[11px] text-slate-600">${esc(x.ciclo)}: <strong>${x.monto.toLocaleString()}</strong></div>`).join('') || '<span class="text-[11px] text-slate-400">-</span>';
+                return `<tr class="border-b border-slate-100 align-top">
                     <td class="p-2 font-semibold text-slate-700">${NOMBRES_MES[parseInt(m, 10) - 1]} ${a}</td>
                     <td class="p-2 text-right text-green-600">${ing.toLocaleString()}</td>
+                    <td class="p-2">${deCiclos}</td>
                     <td class="p-2 text-right text-red-600">${egr.toLocaleString()}</td>
                     <td class="p-2 text-right font-bold text-blue-900">${(ing - egr).toLocaleString()}</td>
                 </tr>`;
             });
             document.getElementById('rep-tabla-meses').innerHTML = filas.join('') ||
-                '<tr><td colspan="4" class="p-3 text-center text-slate-400 text-xs">Sin datos para este período</td></tr>';
+                '<tr><td colspan="5" class="p-3 text-center text-slate-400 text-xs">Sin datos para este período</td></tr>';
+
+            // Recaudación por ciclo (ciclos emitidos en el año elegido)
+            const listaCiclos = [...ciclos.values()]
+                .filter(c => (anio === 'todos' || c.orden.slice(0, 4) === anio || c.orden === '0000') && (c.facturado > 0 || c.cobrado > 0))
+                .sort((x, y) => x.orden.localeCompare(y.orden) || x.ciclo.localeCompare(y.ciclo));
+            document.getElementById('rep-tabla-ciclos').innerHTML = listaCiclos.map(c => {
+                const porCobrar = Math.max(0, c.facturado - c.cobrado);
+                const pct = c.facturado > 0 ? Math.round(c.cobrado / c.facturado * 100) + '%' : '-';
+                return `<tr class="border-b border-slate-100">
+                    <td class="p-2 font-semibold text-slate-700">${esc(c.ciclo)}</td>
+                    <td class="p-2 text-right">${c.facturado.toLocaleString()}</td>
+                    <td class="p-2 text-right text-green-600">${c.cobrado.toLocaleString()}</td>
+                    <td class="p-2 text-right ${porCobrar > 0 ? 'text-red-600 font-semibold' : 'text-slate-400'}">${porCobrar.toLocaleString()}</td>
+                    <td class="p-2 text-right">${pct}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="5" class="p-3 text-center text-slate-400 text-xs">Sin ciclos para este año</td></tr>';
+
+            // Detalle de cobros del período
+            const detalle = delPeriodo.slice().sort((x, y) =>
+                String(x.pago.fecha).localeCompare(String(y.pago.fecha)) || Number(x.pago.id) - Number(y.pago.id) ||
+                ordenCiclo(x.ciclo).localeCompare(ordenCiclo(y.ciclo)));
+            document.getElementById('rep-tabla-cobros').innerHTML = detalle.map(a => `
+                <tr class="border-b border-slate-100">
+                    <td class="p-2 whitespace-nowrap">${esc(a.pago.fecha)}</td>
+                    <td class="p-2">${esc(a.factura.nombre)}</td>
+                    <td class="p-2 font-semibold text-slate-700">${esc(a.ciclo)}</td>
+                    <td class="p-2">${a.origen ? esc(a.origen.num_factura) : '-'}</td>
+                    <td class="p-2 whitespace-nowrap">${a.origen ? esc(String(a.origen.emision).slice(0, 10)) : '-'}</td>
+                    <td class="p-2 text-right font-semibold text-green-600">${a.monto.toLocaleString()}</td>
+                </tr>`).join('') ||
+                '<tr><td colspan="6" class="p-3 text-center text-slate-400 text-xs">Sin cobros en este período</td></tr>';
         }
     </script>
 </body>
